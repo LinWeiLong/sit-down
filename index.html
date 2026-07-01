@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>坐姿矫正提醒</title>
+    <script src="https://unpkg.com/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"
+        crossorigin="anonymous"></script>
+
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0
+        }
+
+        html,
+        body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #000;
+            font-family: system-ui, sans-serif
+        }
+
+        #container {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center
+        }
+
+        canvas {
+            display: block;
+            background: #000
+        }
+
+        video {
+            display: none
+        }
+
+        #status {
+            position: absolute;
+            top: 16px;
+            left: 0;
+            right: 0;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            word-break: break-all;
+            color: #fff;
+            text-shadow: 0 2px 6px rgba(0, 0, 0, 0.8);
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            z-index: 10;
+            pointer-events: none
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.6)
+        }
+
+        #startBtn {
+            padding: 14px 32px;
+            font-size: 18px;
+            background: #2c7dfa;
+            color: #fff;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(44, 125, 250, 0.4)
+        }
+
+        #startBtn:disabled {
+            background: #555;
+            cursor: not-allowed;
+            box-shadow: none
+        }
+
+        .tip {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 13px;
+            margin-top: 12px;
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5)
+        }
+
+        #bottomBar {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            gap: 10px;
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 8px 14px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.15)
+        }
+
+        #bottomBar button {
+            padding: 8px 18px;
+            font-size: 14px;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 14px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.12);
+            transition: background 0.2s
+        }
+
+        #bottomBar button:active {
+            background: rgba(255, 255, 255, 0.25)
+        }
+
+        #bottomBar button.active {
+            background: #2c7dfa;
+            border-color: #2c7dfa
+        }
+
+        #settingsPanel {
+            display: none;
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            width: 300px;
+            max-width: 90vw;
+            z-index: 20
+        }
+
+        #settingsPanel label {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 8px 0;
+            font-size: 14px;
+            color: #333
+        }
+
+        #settingsPanel input[type=range] {
+            width: 50%;
+            accent-color: #2c7dfa
+        }
+
+        #settingsPanel .val {
+            min-width: 36px;
+            text-align: right;
+            font-weight: bold;
+            color: #2c7dfa
+        }
+
+        #settingsPanel .hint {
+            font-size: 11px;
+            color: #999;
+            margin-bottom: 6px
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <video id="video" playsinline></video>
+        <canvas id="canvas" width="640" height="480"></canvas>
+        <div id="status">等待启动...</div>
+        <div id="startScreen">
+            <button id="startBtn">点击开始坐姿检测</button>
+            <div class="tip">如白屏/无画面：请使用Chrome/Edge，允许摄像头权限</div>
+        </div>
+        <div id="bottomBar">
+            <button id="calibBtn">校准</button>
+            <button id="animalBtn">🐱</button>
+            <button id="settingsToggle">设置</button>
+        </div>
+        <div id="settingsPanel">
+            <div style="font-weight:bold;margin-bottom:6px;font-size:15px">阈值设置</div>
+            <label>低头敏感度 <input type="range" id="headDownThresh" min="0.6" max="0.95" step="0.05" value="0.85"> <span
+                    class="val" id="headDownVal">0.85</span></label>
+            <div class="hint">数值越大越容易触发（更敏感）</div>
+            <label>歪头敏感度 <input type="range" id="headTiltThresh" min="1.5" max="5.0" step="0.5" value="3.5"> <span
+                    class="val" id="headTiltVal">3.5</span></label>
+            <div class="hint">数值越小越容易触发（更敏感）</div>
+            <label>收下巴敏感度 <input type="range" id="chinDownThresh" min="0.5" max="0.9" step="0.05" value="0.7"> <span
+                    class="val" id="chinDownVal">0.7</span></label>
+            <div class="hint">数值越大越容易触发（更敏感）</div>
+        </div>
+    </div>
+    <script>
+        var video = document.getElementById('video');
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
+        var statusEl = document.getElementById('status');
+        var startBtn = document.getElementById('startBtn');
+        var startScreen = document.getElementById('startScreen');
+        var calibBtn = document.getElementById('calibBtn');
+        var bottomBar = document.getElementById('bottomBar');
+        var settingsToggle = document.getElementById('settingsToggle');
+        var settingsPanel = document.getElementById('settingsPanel');
+        var headDownThresh = 0.85;
+        var headTiltThresh = 3.5;
+        var chinDownThresh = 0.7;
+        settingsToggle.onclick = function () {
+            var visible = settingsPanel.style.display !== 'none';
+            settingsPanel.style.display = visible ? 'none' : 'block';
+            settingsToggle.className = visible ? '' : 'active'
+        };
+        var headDownSlider = document.getElementById('headDownThresh');
+        var headTiltSlider = document.getElementById('headTiltThresh');
+        var chinDownSlider = document.getElementById('chinDownThresh');
+        headDownSlider.oninput = function () { headDownThresh = parseFloat(this.value); document.getElementById('headDownVal').innerText = headDownThresh };
+        headTiltSlider.oninput = function () { headTiltThresh = parseFloat(this.value); document.getElementById('headTiltVal').innerText = headTiltThresh };
+        chinDownSlider.oninput = function () { chinDownThresh = parseFloat(this.value); document.getElementById('chinDownVal').innerText = chinDownThresh };
+        function fitCanvas() {
+            var cw = canvas.width; var ch = canvas.height;
+            if (!cw || !ch) return;
+            var vw = window.innerWidth; var vh = window.innerHeight;
+            var scale = Math.min(vw / cw, vh / ch);
+            canvas.style.width = Math.round(cw * scale) + 'px';
+            canvas.style.height = Math.round(ch * scale) + 'px'
+        }
+        window.addEventListener('resize', fitCanvas);
+        var ALERT_DELAY = 2000;
+        var REPEAT_INTERVAL = 10000;
+        var lastAlertTime = 0;
+        var badPostureStartTime = null;
+        var isAlertPlaying = false;
+        var wasBad = false;
+        var pose = null;
+        var camera = null;
+        var baseline = null;
+        var CALIB_DURATION = 3000;
+        var calibStartTime = null;
+        var calibBuffer = [];
+        var SMOOTH_ALPHA = 0.3;
+        var smoothM = null;
+        function getMetrics(lm) {
+            var nose = lm[0];
+            var leftEye = lm[2]; var rightEye = lm[5];
+            var leftEar = lm[7]; var rightEar = lm[8];
+            var leftMouth = lm[9]; var rightMouth = lm[10];
+            var leftShoulder = lm[11]; var rightShoulder = lm[12];
+            var avgEarY = (leftEar.y + rightEar.y) / 2;
+            var avgShoulderY = (leftShoulder.y + rightShoulder.y) / 2;
+            var avgEyeY = (leftEye.y + rightEye.y) / 2;
+            var avgMouthY = (leftMouth.y + rightMouth.y) / 2;
+            var noseY = nose.y;
+            var earShoulderDist = avgShoulderY - avgEarY;
+            var eyeShoulderDist = avgShoulderY - avgEyeY;
+            var noseShoulderDist = avgShoulderY - noseY;
+            var mouthShoulderDist = avgShoulderY - avgMouthY;
+            var noseMouthDist = avgMouthY - noseY;
+            var earDiffY = Math.abs(leftEar.y - rightEar.y);
+            var eyeDiffY = Math.abs(leftEye.y - rightEye.y);
+            return { earShoulderDist: earShoulderDist, eyeShoulderDist: eyeShoulderDist, noseShoulderDist: noseShoulderDist, mouthShoulderDist: mouthShoulderDist, noseMouthDist: noseMouthDist, earDiffY: earDiffY, eyeDiffY: eyeDiffY }
+        }
+        function doCalibrate() {
+            if (Date.now() - calibStartTime < CALIB_DURATION) { var elapsed = ((Date.now() - calibStartTime) / 1000).toFixed(1); statusEl.innerText = '校准采集中...' + elapsed + '秒/3秒'; statusEl.style.color = '#28a745'; return false }
+            var b = { earShoulderDist: 0, eyeShoulderDist: 0, noseShoulderDist: 0, mouthShoulderDist: 0, noseMouthDist: 0, earDiffY: 0, eyeDiffY: 0 };
+            for (var i = 0; i < calibBuffer.length; i++) { var s = calibBuffer[i]; for (var k in b) b[k] += s[k] }
+            for (var k in b) b[k] /= calibBuffer.length;
+            baseline = b;
+            calibBuffer = [];
+            calibStartTime = null;
+            return true
+        }
+        function speakText(text) { var utter = new SpeechSynthesisUtterance(text); utter.lang = 'zh-CN'; utter.rate = 0.9; window.speechSynthesis.cancel(); window.speechSynthesis.speak(utter) }
+        function beep(freq, duration, vol) { try { var ac = new (window.AudioContext || window.webkitAudioContext)(); var osc = ac.createOscillator(); var gain = ac.createGain(); osc.connect(gain); gain.connect(ac.destination); osc.frequency.value = freq; gain.gain.value = vol || 0.3; osc.start(); osc.stop(ac.currentTime + duration / 1000) } catch (e) { } }
+        function startCalibration() {
+            calibBuffer = [];
+            baseline = null;
+            calibStartTime = null;
+            calibBtn.disabled = true;
+            calibBtn.innerText = '校准中...';
+            var countdown = 3;
+            statusEl.innerText = '校准倒计时：' + countdown + '秒，请保持标准坐姿不动';
+            statusEl.style.color = '#28a745';
+            beep(440, 150);
+            var timer = setInterval(function () {
+                countdown--;
+                if (countdown > 0) { statusEl.innerText = '校准倒计时：' + countdown + '秒，请保持标准坐姿不动'; beep(440, 150) }
+                else { clearInterval(timer); calibStartTime = Date.now(); statusEl.innerText = '校准采集中...0.0秒/3秒'; statusEl.style.color = '#28a745'; beep(880, 300) }
+            }, 1000)
+        }
+        window.addEventListener('load', function () {
+            try {
+                statusEl.innerText = '模型加载中，请稍候...';
+                pose = new Pose({ locateFile: function (file) { return 'https://unpkg.com/@mediapipe/pose@0.5.1675469404/' + file } });
+                pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
+                pose.onResults(onResults);
+                statusEl.innerText = '模型就绪，点击按钮开启摄像头';
+            } catch (err) { statusEl.innerText = '模型加载失败，请刷新页面或更换浏览器'; statusEl.style.color = 'red'; console.error(err) }
+        });
+        startBtn.onclick = function () {
+            if (!pose) { statusEl.innerText = '模型还未加载完成，稍等！'; statusEl.style.color = 'orange'; return }
+            startScreen.style.display = 'none';
+            statusEl.innerText = '正在请求摄像头权限...';
+            canvas.width = 640; canvas.height = 480;
+            fitCanvas();
+            camera = new Camera(video, { onFrame: function () { return pose.send({ image: video }) }, width: 640, height: 480 });
+            camera.start().then(function () {
+                statusEl.innerText = '请保持标准坐姿，点击校准按钮';
+                bottomBar.style.display = 'flex';
+                calibBtn.disabled = false;
+                calibBtn.innerText = '校准';
+            }).catch(function (err) {
+                statusEl.innerText = '摄像头打开失败，请授予摄像头权限';
+                statusEl.style.color = 'red';
+                startScreen.style.display = 'flex';
+                startBtn.innerText = '重新尝试';
+                console.error(err)
+            });
+        };
+        calibBtn.onclick = startCalibration;
+        var animalBtn = document.getElementById('animalBtn');
+        animalBtn.onclick = function () { currentAnimal = (currentAnimal + 1) % animalFaces.length; animalBtn.innerText = animalFaces[currentAnimal] };
+        var animalFaces = ['🐱', '🐶', '🐼', '🦊', '🐰', '🐯', '🦁', '🐻', '🐸', '🐨'];
+        var currentAnimal = 0;
+        function drawAnimalFace(lm, w, h) {
+            var nose = lm[0]; var leftEye = lm[2]; var rightEye = lm[5]; var leftEar = lm[7]; var rightEar = lm[8]; var leftMouth = lm[9]; var rightMouth = lm[10];
+            var cx = nose.x * w; var cy = nose.y * h;
+            var faceW = Math.abs(leftEar.x - rightEar.x) * w * 1.3;
+            var faceH = Math.abs(leftMouth.y - (leftEar.y < rightEar.y ? leftEar.y : rightEar.y)) * h * 1.5;
+            var size = Math.max(faceW, faceH);
+            if (size < 20) return;
+            ctx.font = size + 'px serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(animalFaces[currentAnimal], cx, cy - size * 0.1)
+        }
+        function onResults(results) {
+            if (video.videoWidth > 0 && (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; fitCanvas(); }
+            var w = canvas.width; var h = canvas.height;
+            ctx.clearRect(0, 0, w, h);
+            ctx.save();
+            ctx.translate(w, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(results.image, 0, 0, w, h);
+            if (results.poseLandmarks && typeof drawConnectors !== 'undefined' && typeof drawLandmarks !== 'undefined') { drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00ff00', lineWidth: 4 }); drawLandmarks(ctx, results.poseLandmarks, { color: '#ff0000', lineWidth: 2 }); drawAnimalFace(results.poseLandmarks, w, h) }
+            ctx.restore();
+            if (!results.poseLandmarks) { statusEl.innerText = '未检测到人体，请正对摄像头'; statusEl.style.color = 'rgba(255,255,255,0.7)'; badPostureStartTime = null; return }
+            var m = getMetrics(results.poseLandmarks);
+            if (!smoothM) { smoothM = {}; for (var k in m) smoothM[k] = m[k] }
+            else { for (var k in m) smoothM[k] = smoothM[k] * (1 - SMOOTH_ALPHA) + m[k] * SMOOTH_ALPHA }
+            if (!baseline) {
+                if (calibStartTime !== null) { calibBuffer.push(m); if (doCalibrate()) { calibBtn.innerText = '校准'; calibBtn.disabled = false; speakText('校准完成，开始检测'); statusEl.innerText = '\u2705 坐姿良好'; statusEl.style.color = 'green' } }
+                return
+            }
+            var headDownRatio = smoothM.noseShoulderDist / baseline.noseShoulderDist;
+            var headTiltRatio = smoothM.earDiffY / baseline.earDiffY;
+            var chinDownRatio = smoothM.noseMouthDist / baseline.noseMouthDist;
+            var isHeadDown = headDownRatio < headDownThresh;
+            var isChinDown = chinDownRatio < chinDownThresh;
+            var isHeadTilt = headTiltRatio > headTiltThresh;
+            var isBad = isHeadDown || isChinDown || isHeadTilt;
+            var reason = '';
+            if (isHeadDown) reason = reason + '低头(' + headDownRatio.toFixed(2) + ') ';
+            if (isChinDown) reason = reason + '收下巴(' + chinDownRatio.toFixed(2) + ') ';
+            if (isHeadTilt) reason = reason + '歪头(' + headTiltRatio.toFixed(2) + ') ';
+            if (isBad) {
+                wasBad = true;
+                if (!badPostureStartTime) badPostureStartTime = Date.now();
+                var duration = Date.now() - badPostureStartTime;
+                if (duration >= ALERT_DELAY) {
+                    var now = Date.now();
+                    if (now - lastAlertTime >= REPEAT_INTERVAL || lastAlertTime === 0) { lastAlertTime = now; speakText('请调整坐姿，不要低头歪头') }
+                    statusEl.innerText = '\u26a0\ufe0f 坐姿错误：' + reason; statusEl.style.color = 'red'
+                }
+                else { var waitSecond = Math.ceil((ALERT_DELAY - duration) / 1000); statusEl.innerText = '\u26a0\ufe0f ' + reason + waitSecond + '秒后提醒'; statusEl.style.color = 'orange' }
+            } else {
+                lastAlertTime = 0;
+                if (wasBad) { wasBad = false }
+                badPostureStartTime = null; isAlertPlaying = false; statusEl.innerText = '\u2705 坐姿良好'; statusEl.style.color = 'green'
+            }
+        }
+    </script>
+</body>
+
+</html>
