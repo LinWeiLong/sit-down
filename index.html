@@ -5,11 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>坐姿矫正提醒</title>
-    <script src="https://unpkg.com/@mediapipe/pose@0.5.1675469404/pose.js" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@mediapipe/camera_utils@0.3.1675466862/camera_utils.js"
-        crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/@mediapipe/drawing_utils@0.3.1675466124/drawing_utils.js"
-        crossorigin="anonymous"></script>
+    <script src="./vendor/mediapipe/pose/pose.js"></script>
+    <script src="./vendor/mediapipe/camera_utils/camera_utils.js"></script>
+    <script src="./vendor/mediapipe/drawing_utils/drawing_utils.js"></script>
 
     <style>
         * {
@@ -154,6 +152,10 @@
             z-index: 20
         }
 
+        #settingsPanel.visible {
+            display: block
+        }
+
         #settingsPanel label {
             display: flex;
             align-items: center;
@@ -202,8 +204,8 @@
             <label>低头敏感度 <input type="range" id="headDownThresh" min="0.6" max="0.95" step="0.05" value="0.85"> <span
                     class="val" id="headDownVal">0.85</span></label>
             <div class="hint">数值越大越容易触发（更敏感）</div>
-            <label>歪头敏感度 <input type="range" id="headTiltThresh" min="1.5" max="5.0" step="0.5" value="3.5"> <span
-                    class="val" id="headTiltVal">3.5</span></label>
+            <label>歪头阈值 <input type="range" id="headTiltThresh" min="3" max="15" step="0.5" value="7.5"> <span
+                    class="val" id="headTiltVal">7.5°</span></label>
             <div class="hint">数值越小越容易触发（更敏感）</div>
             <label>收下巴敏感度 <input type="range" id="chinDownThresh" min="0.5" max="0.9" step="0.05" value="0.7"> <span
                     class="val" id="chinDownVal">0.7</span></label>
@@ -222,19 +224,32 @@
         var settingsToggle = document.getElementById('settingsToggle');
         var settingsPanel = document.getElementById('settingsPanel');
         var headDownThresh = 0.85;
-        var headTiltThresh = 3.5;
+        var headTiltThresh = 7.5;
         var chinDownThresh = 0.7;
         settingsToggle.onclick = function () {
-            var visible = settingsPanel.style.display !== 'none';
-            settingsPanel.style.display = visible ? 'none' : 'block';
-            settingsToggle.className = visible ? '' : 'active'
+            var visible = settingsPanel.classList.toggle('visible');
+            settingsToggle.classList.toggle('active', visible)
         };
         var headDownSlider = document.getElementById('headDownThresh');
         var headTiltSlider = document.getElementById('headTiltThresh');
         var chinDownSlider = document.getElementById('chinDownThresh');
-        headDownSlider.oninput = function () { headDownThresh = parseFloat(this.value); document.getElementById('headDownVal').innerText = headDownThresh };
-        headTiltSlider.oninput = function () { headTiltThresh = parseFloat(this.value); document.getElementById('headTiltVal').innerText = headTiltThresh };
-        chinDownSlider.oninput = function () { chinDownThresh = parseFloat(this.value); document.getElementById('chinDownVal').innerText = chinDownThresh };
+        function saveSettings() { localStorage.setItem('postureSettings', JSON.stringify({ headDown: headDownThresh, headTilt: headTiltThresh, chinDown: chinDownThresh })) }
+        function loadSettings() {
+            try {
+                var saved = JSON.parse(localStorage.getItem('postureSettings'));
+                if (!saved) return;
+                if (saved.headDown) headDownSlider.value = headDownThresh = saved.headDown;
+                if (saved.headTilt) headTiltSlider.value = headTiltThresh = saved.headTilt;
+                if (saved.chinDown) chinDownSlider.value = chinDownThresh = saved.chinDown;
+                document.getElementById('headDownVal').innerText = headDownThresh;
+                document.getElementById('headTiltVal').innerText = headTiltThresh + '°';
+                document.getElementById('chinDownVal').innerText = chinDownThresh
+            } catch (e) { localStorage.removeItem('postureSettings') }
+        }
+        headDownSlider.oninput = function () { headDownThresh = parseFloat(this.value); document.getElementById('headDownVal').innerText = headDownThresh; saveSettings() };
+        headTiltSlider.oninput = function () { headTiltThresh = parseFloat(this.value); document.getElementById('headTiltVal').innerText = headTiltThresh + '°'; saveSettings() };
+        chinDownSlider.oninput = function () { chinDownThresh = parseFloat(this.value); document.getElementById('chinDownVal').innerText = chinDownThresh; saveSettings() };
+        loadSettings();
         function fitCanvas() {
             var cw = canvas.width; var ch = canvas.height;
             if (!cw || !ch) return;
@@ -276,13 +291,19 @@
             var noseMouthDist = avgMouthY - noseY;
             var earDiffY = Math.abs(leftEar.y - rightEar.y);
             var eyeDiffY = Math.abs(leftEye.y - rightEye.y);
-            return { earShoulderDist: earShoulderDist, eyeShoulderDist: eyeShoulderDist, noseShoulderDist: noseShoulderDist, mouthShoulderDist: mouthShoulderDist, noseMouthDist: noseMouthDist, earDiffY: earDiffY, eyeDiffY: eyeDiffY }
+            var earTiltAngle = Math.atan2(rightEar.y - leftEar.y, Math.abs(rightEar.x - leftEar.x)) * 180 / Math.PI;
+            return { earShoulderDist: earShoulderDist, eyeShoulderDist: eyeShoulderDist, noseShoulderDist: noseShoulderDist, mouthShoulderDist: mouthShoulderDist, noseMouthDist: noseMouthDist, earDiffY: earDiffY, eyeDiffY: eyeDiffY, earTiltAngle: earTiltAngle }
+        }
+        function median(values) { var sorted = values.slice().sort(function (a, b) { return a - b }); var mid = Math.floor(sorted.length / 2); return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2 }
+        function hasReliableLandmarks(lm) {
+            var required = [0, 2, 5, 7, 8, 9, 10, 11, 12];
+            return required.every(function (i) { return lm[i].visibility === undefined || lm[i].visibility >= 0.6 })
         }
         function doCalibrate() {
             if (Date.now() - calibStartTime < CALIB_DURATION) { var elapsed = ((Date.now() - calibStartTime) / 1000).toFixed(1); statusEl.innerText = '校准采集中...' + elapsed + '秒/3秒'; statusEl.style.color = '#28a745'; return false }
-            var b = { earShoulderDist: 0, eyeShoulderDist: 0, noseShoulderDist: 0, mouthShoulderDist: 0, noseMouthDist: 0, earDiffY: 0, eyeDiffY: 0 };
-            for (var i = 0; i < calibBuffer.length; i++) { var s = calibBuffer[i]; for (var k in b) b[k] += s[k] }
-            for (var k in b) b[k] /= calibBuffer.length;
+            if (calibBuffer.length < 10) { statusEl.innerText = '校准失败，请确保脸和双肩清晰可见'; statusEl.style.color = 'orange'; calibStartTime = null; calibBtn.disabled = false; calibBtn.innerText = '重新校准'; return false }
+            var b = {};
+            for (var k in calibBuffer[0]) b[k] = median(calibBuffer.map(function (sample) { return sample[k] }));
             baseline = b;
             calibBuffer = [];
             calibStartTime = null;
@@ -293,6 +314,9 @@
         function startCalibration() {
             calibBuffer = [];
             baseline = null;
+            smoothM = null;
+            badPostureStartTime = null;
+            lastAlertTime = 0;
             calibStartTime = null;
             calibBtn.disabled = true;
             calibBtn.innerText = '校准中...';
@@ -309,12 +333,13 @@
         window.addEventListener('load', function () {
             try {
                 statusEl.innerText = '模型加载中，请稍候...';
-                pose = new Pose({ locateFile: function (file) { return 'https://unpkg.com/@mediapipe/pose@0.5.1675469404/' + file } });
+                pose = new Pose({ locateFile: function (file) { return './vendor/mediapipe/pose/' + file } });
                 pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
                 pose.onResults(onResults);
                 statusEl.innerText = '模型就绪，点击按钮开启摄像头';
             } catch (err) { statusEl.innerText = '模型加载失败，请刷新页面或更换浏览器'; statusEl.style.color = 'red'; console.error(err) }
         });
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('离线缓存注册失败', err) });
         startBtn.onclick = function () {
             if (!pose) { statusEl.innerText = '模型还未加载完成，稍等！'; statusEl.style.color = 'orange'; return }
             startScreen.style.display = 'none';
@@ -363,6 +388,7 @@
             if (results.poseLandmarks && typeof drawConnectors !== 'undefined' && typeof drawLandmarks !== 'undefined') { drawConnectors(ctx, results.poseLandmarks, POSE_CONNECTIONS, { color: '#00ff00', lineWidth: 4 }); drawLandmarks(ctx, results.poseLandmarks, { color: '#ff0000', lineWidth: 2 }); drawAnimalFace(results.poseLandmarks, w, h) }
             ctx.restore();
             if (!results.poseLandmarks) { statusEl.innerText = '未检测到人体，请正对摄像头'; statusEl.style.color = 'rgba(255,255,255,0.7)'; badPostureStartTime = null; return }
+            if (!hasReliableLandmarks(results.poseLandmarks)) { statusEl.innerText = '关键部位被遮挡，请确保脸和双肩清晰可见'; statusEl.style.color = 'orange'; badPostureStartTime = null; return }
             var m = getMetrics(results.poseLandmarks);
             if (!smoothM) { smoothM = {}; for (var k in m) smoothM[k] = m[k] }
             else { for (var k in m) smoothM[k] = smoothM[k] * (1 - SMOOTH_ALPHA) + m[k] * SMOOTH_ALPHA }
@@ -371,16 +397,16 @@
                 return
             }
             var headDownRatio = smoothM.noseShoulderDist / baseline.noseShoulderDist;
-            var headTiltRatio = smoothM.earDiffY / baseline.earDiffY;
+            var headTiltDegrees = Math.abs(smoothM.earTiltAngle - baseline.earTiltAngle);
             var chinDownRatio = smoothM.noseMouthDist / baseline.noseMouthDist;
             var isHeadDown = headDownRatio < headDownThresh;
             var isChinDown = chinDownRatio < chinDownThresh;
-            var isHeadTilt = headTiltRatio > headTiltThresh;
+            var isHeadTilt = headTiltDegrees > headTiltThresh;
             var isBad = isHeadDown || isChinDown || isHeadTilt;
             var reason = '';
             if (isHeadDown) reason = reason + '低头(' + headDownRatio.toFixed(2) + ') ';
             if (isChinDown) reason = reason + '收下巴(' + chinDownRatio.toFixed(2) + ') ';
-            if (isHeadTilt) reason = reason + '歪头(' + headTiltRatio.toFixed(2) + ') ';
+            if (isHeadTilt) reason = reason + '歪头(' + headTiltDegrees.toFixed(1) + '°) ';
             if (isBad) {
                 wasBad = true;
                 if (!badPostureStartTime) badPostureStartTime = Date.now();
