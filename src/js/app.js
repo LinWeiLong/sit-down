@@ -17,6 +17,9 @@
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
+    var debugLog = window.__sitDownDebugLog || function () { };
+    debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__ });
+
     var pose = null;
     var camera = null;
     var activeSession = null;
@@ -28,6 +31,7 @@
     var focusStartedAt = null;
     var lastFrameAt = null;
     var sessionTimer = null;
+    var firstResultsLogged = false;
     var encouragementSpoken = false;
     var postureState = {
         currentLabels: [],
@@ -256,6 +260,15 @@
     }
 
     function onResults(results) {
+        if (!firstResultsLogged) {
+            firstResultsLogged = true;
+            debugLog('[sit-down] first pose results', {
+                hasImage: !!(results && results.image),
+                hasLandmarks: !!(results && results.poseLandmarks),
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight
+            });
+        }
         if (!activeSession) return;
         if (video.videoWidth > 0 && (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight)) {
             canvas.width = video.videoWidth;
@@ -317,12 +330,23 @@
 
     function setupPose() {
         setStatus('模型加载中，请稍候...', 'info');
-        pose = new Pose({ locateFile: function (file) { return './vendor/mediapipe/pose/' + file; } });
+        debugLog('[sit-down] setupPose begin', { hasPoseCtor: typeof Pose !== 'undefined' });
+        pose = new Pose({ locateFile: function (file) {
+            var located = './vendor/mediapipe/pose/' + file;
+            debugLog('[sit-down] mediapipe locateFile', file, located);
+            return located;
+        } });
         pose.setOptions({ modelComplexity: 1, smoothLandmarks: true, minDetectionConfidence: 0.5, minTrackingConfidence: 0.5 });
         pose.onResults(onResults);
+        debugLog('[sit-down] setupPose done');
     }
 
     function startCamera() {
+        debugLog('[sit-down] startCamera begin', {
+            hasCameraCtor: typeof Camera !== 'undefined',
+            protocol: window.location.protocol,
+            mediaDevices: !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+        });
         canvas.width = 640;
         canvas.height = 480;
         fitCanvas();
@@ -331,7 +355,13 @@
             width: 640,
             height: 480
         });
-        return camera.start();
+        return camera.start().then(function () {
+            debugLog('[sit-down] camera started', {
+                videoWidth: video.videoWidth,
+                videoHeight: video.videoHeight,
+                readyState: video.readyState
+            });
+        });
     }
 
     durationOptions.forEach(function (button) {
@@ -356,8 +386,10 @@
         setView('study');
         setStatus('正在请求摄像头权限。请把手机固定在孩子左前方30°～45°。', 'info');
         startCamera().then(function () {
+            debugLog('[sit-down] startCamera resolved in submit handler');
             setStatus('请确认头部、双肩和髋部都在画面里，然后点击开始校准。', 'info');
         }).catch(function (err) {
+            debugLog('[sit-down] startCamera failed', err);
             activeSession = null;
             setView('home');
             alert('摄像头打开失败，请允许摄像头权限后重试。');
@@ -391,6 +423,11 @@
 
     window.addEventListener('resize', fitCanvas);
     window.addEventListener('load', function () {
+        debugLog('[sit-down] window load', {
+            hasPoseCtor: typeof Pose !== 'undefined',
+            hasCameraCtor: typeof Camera !== 'undefined',
+            hasDraw: typeof drawConnectors !== 'undefined'
+        });
         try {
             setupPose();
             if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('离线缓存注册失败', err); });

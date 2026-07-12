@@ -7,6 +7,8 @@ const requiredFiles = [
   'src/js/posture-math.js',
   'src/js/session-model.js',
   'src/js/app.js',
+  'src/js/debug-bootstrap.js',
+  'vendor/vconsole/vconsole.min.js',
   'scripts/build-web.mjs',
   'vendor/mediapipe/pose/pose.js',
   'vendor/mediapipe/pose/pose_landmark_full.tflite',
@@ -22,12 +24,12 @@ if (/<(?:script|link)[^>]+(?:src|href)=["']https?:/i.test(html)) {
   throw new Error('Runtime CDN references are not allowed in index.html');
 }
 
-for (const path of ['src/styles/app.css', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
+for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
   if (!html.includes(path)) throw new Error('index.html is missing runtime asset: ' + path);
 }
 
 const sw = await readFile('sw.js', 'utf8');
-for (const path of ['src/styles/app.css', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
+for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'vendor/vconsole/vconsole.min.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
   if (!sw.includes(path)) throw new Error('Service worker app shell is missing: ' + path);
 }
 
@@ -35,6 +37,11 @@ const css = await readFile('src/styles/app.css', 'utf8');
 if (/video\s*\{[^}]*display\s*:\s*none\b/is.test(css)) {
   throw new Error('Camera preview video must not be permanently hidden; placement/calibration should show the raw camera feed.');
 }
+const debugBootstrap = await readFile('src/js/debug-bootstrap.js', 'utf8');
+if (!debugBootstrap.includes("params.get('debug')") || !debugBootstrap.includes('vconsole.min.js')) {
+  throw new Error('debug-bootstrap must gate local vConsole behind ?debug=1.');
+}
+
 const app = await readFile('src/js/app.js', 'utf8');
 if (/animalFaces|animalBtn/.test(app)) throw new Error('Focus demo must not keep child-attracting animal overlay controls.');
 

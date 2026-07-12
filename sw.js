@@ -1,8 +1,10 @@
-const CACHE_NAME = 'sit-down-v4';
+const CACHE_NAME = 'sit-down-v5';
 const APP_SHELL = [
   './',
   './index.html',
   './src/styles/app.css',
+  './src/js/debug-bootstrap.js',
+  './vendor/vconsole/vconsole.min.js',
   './src/js/posture-math.js',
   './src/js/session-model.js',
   './src/js/app.js',
