@@ -109,7 +109,7 @@
 
     function hasReliableLandmarks(lm, minimumVisibility) {
         var threshold = minimumVisibility === undefined ? 0.6 : minimumVisibility;
-        var required = [0, 2, 5, 7, 8, 9, 10, 11, 12, 23, 24];
+        var required = [0, 2, 5, 7, 8, 9, 10, 11, 12];
         return required.every(function (i) {
             return lm[i] && (lm[i].visibility === undefined || lm[i].visibility >= threshold);
         });
@@ -117,16 +117,16 @@
 
     function assessPlacementFrame(lm) {
         if (!lm || !hasReliableLandmarks(lm)) {
-            return { ok: false, reason: 'unreliable', message: '请确认头部、双肩和髋部都清楚入镜。' };
+            return { ok: false, reason: 'unreliable', message: '请确认头部和双肩都清楚入镜。' };
         }
         var metrics = getMetrics(lm);
-        if (metrics.shoulderWidth < 0.12 || metrics.trunkLength < 0.18) {
+        if (metrics.shoulderWidth < 0.12) {
             return { ok: false, reason: 'too-far', message: '孩子在画面里太小，请把设备靠近一点。' };
         }
         if (metrics.shoulderWidth > 0.75) {
             return { ok: false, reason: 'too-close', message: '距离太近，请把设备稍微放远一点。' };
         }
-        return { ok: true, reason: 'ready', message: '头部、双肩和髋部都清楚，距离也合适。' };
+        return { ok: true, reason: 'ready', message: '头部和双肩清楚，距离也合适。' };
     }
 
     function getActivityStrategy(activity) {
@@ -134,10 +134,14 @@
     }
 
     function hasScaleShift(metrics, baseline) {
-        if (!metrics || !baseline || !baseline.shoulderWidth || !baseline.trunkLength) return false;
+        if (!metrics || !baseline || !baseline.shoulderWidth) return false;
         var shoulderRatio = metrics.shoulderWidth / baseline.shoulderWidth;
-        var trunkRatio = metrics.trunkLength / baseline.trunkLength;
-        return shoulderRatio < 0.55 || shoulderRatio > 1.7 || trunkRatio < 0.55 || trunkRatio > 1.7;
+        var trunkShifted = false;
+        if (baseline.trunkLength && metrics.trunkLength) {
+            var trunkRatio = metrics.trunkLength / baseline.trunkLength;
+            trunkShifted = trunkRatio < 0.55 || trunkRatio > 1.7;
+        }
+        return shoulderRatio < 0.55 || shoulderRatio > 1.7 || trunkShifted;
     }
 
     function classifyPostureFrame(input) {

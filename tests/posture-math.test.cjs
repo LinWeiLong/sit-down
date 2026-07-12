@@ -34,26 +34,31 @@ test('median rejects outliers for odd and even samples', () => {
     assert.equal(median([1, 2, 3, 4]), 2.5);
 });
 
-test('visibility requires every posture landmark to be reliable', () => {
+test('desk mode reliability requires head and shoulders but not hips', () => {
     const lm = landmarks();
+    assert.equal(hasReliableLandmarks(lm), true);
+    lm[23].visibility = 0.2;
+    lm[24].visibility = 0.2;
     assert.equal(hasReliableLandmarks(lm), true);
     lm[7].visibility = 0.2;
     assert.equal(hasReliableLandmarks(lm), false);
 });
 
-test('placement assessment requires reliable head, shoulders, hips, and usable scale', () => {
+test('placement assessment accepts upper-body desk framing and usable shoulder scale', () => {
     const lm = placedLandmarks();
 
     assert.deepEqual(assessPlacementFrame(lm), {
         ok: true,
         reason: 'ready',
-        message: '头部、双肩和髋部都清楚，距离也合适。'
+        message: '头部和双肩清楚，距离也合适。'
     });
 
     lm[23].visibility = 0.2;
-    assert.equal(assessPlacementFrame(lm).reason, 'unreliable');
+    lm[24].visibility = 0.2;
+    assert.equal(assessPlacementFrame(lm).reason, 'ready');
 
     lm[23].visibility = 1;
+    lm[24].visibility = 1;
     lm[11].x = 0.48;
     lm[12].x = 0.52;
     assert.equal(assessPlacementFrame(lm).reason, 'too-far');

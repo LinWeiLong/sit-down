@@ -7,6 +7,8 @@
     var resultView = document.getElementById('resultView');
     var statusEl = document.getElementById('status');
     var sessionForm = document.getElementById('sessionForm');
+    var startTrialBtn = document.getElementById('startTrialBtn');
+    var settingsToggle = document.getElementById('settingsToggle');
     var activitySelect = document.getElementById('activitySelect');
     var durationInput = document.getElementById('durationInput');
     var durationOptions = Array.from(document.querySelectorAll('.duration-option'));
@@ -139,6 +141,7 @@
         });
         var rows = [
             ['活动', activeStrategy ? activeStrategy.label : '未开始'],
+            ['识别模式', '书桌上半身模式'],
             ['计划时长', activeSession ? activeSession.plannedMinutes + '分钟' : '未开始'],
             ['实际时长', Math.round(actualMs / 60000) + '分钟'],
             ['可靠检测比例', Math.round((score.reliableRatio || 0) * 100) + '%'],
@@ -300,18 +303,18 @@
 
         if (!landmarks) {
             if (activeSession.state === 'calibration' && calibStartTime && Date.now() - calibStartTime >= CALIBRATION_MS) {
-                cancelCalibrationWithMessage('校准失败：没有检测到孩子，请让头部、双肩和髋部都进入画面后重试。');
+                cancelCalibrationWithMessage('校准失败：没有检测到孩子，请让头部和双肩进入画面后重试。');
                 return;
             }
-            setStatus('还没有检测到孩子，请让头部、双肩和髋部都进入画面。', 'warn');
+            setStatus('还没有检测到孩子，请让头部和双肩进入画面。', 'warn');
             return;
         }
         if (!reliable) {
             if (activeSession.state === 'calibration' && calibStartTime && Date.now() - calibStartTime >= CALIBRATION_MS) {
-                cancelCalibrationWithMessage('校准失败：关键部位不够清楚，请确认头部、双肩和髋部没有被遮挡后重试。');
+                cancelCalibrationWithMessage('校准失败：关键部位不够清楚，请确认头部和双肩没有被遮挡后重试。');
                 return;
             }
-            setStatus('关键部位不够清楚，请确认头部、双肩和髋部没有被遮挡。', 'warn');
+            setStatus('关键部位不够清楚，请确认头部和双肩没有被遮挡。', 'warn');
             return;
         }
         lastReliablePoseAt = Date.now();
@@ -323,7 +326,7 @@
         });
 
         if (activeSession.state === 'placement') {
-            setStatus('摆放合适：手机在孩子左前方30°～45°，头部、双肩、髋部都在画面里。', 'ok');
+            setStatus('摆放合适：头部和双肩都在画面里。可以点击开始校准。', 'ok');
             return;
         }
 
@@ -393,9 +396,12 @@
         });
     });
 
-    sessionForm.addEventListener('submit', function (event) {
-        event.preventDefault();
-        var config = { activity: activitySelect.value, plannedMinutes: Number(durationInput.value) };
+    function getCurrentSessionConfig() {
+        return { activity: activitySelect.value || 'writing', plannedMinutes: Number(durationInput.value || 15) };
+    }
+
+    function startTrialSession() {
+        var config = getCurrentSessionConfig();
         var validated = SessionModel.validateSessionConfig(config);
         if (!validated.ok) {
             alert(validated.reason);
@@ -404,11 +410,13 @@
         activeSession = SessionModel.createStudySession(config);
         activeStrategy = PoseMath.getActivityStrategy(config.activity);
         activeSession = SessionModel.transitionSession(activeSession, 'START_PLACEMENT', Date.now());
+        calibBtn.disabled = false;
+        sessionForm.classList.add('hidden');
         setView('study');
-        setStatus('正在请求摄像头权限。请把手机固定在孩子左前方30°～45°。', 'info');
+        setStatus('正在请求摄像头权限。请把设备固定在书桌前方，让头部和双肩入镜。', 'info');
         startCamera().then(function () {
-            debugLog('[sit-down] startCamera resolved in submit handler');
-            setStatus('请确认头部、双肩和髋部都在画面里，然后点击开始校准。', 'info');
+            debugLog('[sit-down] startCamera resolved in trial handler');
+            setStatus('请确认头部和双肩都在画面里，然后点击开始校准。', 'info');
         }).catch(function (err) {
             debugLog('[sit-down] startCamera failed', err);
             activeSession = null;
@@ -416,6 +424,28 @@
             alert('摄像头打开失败，请允许摄像头权限后重试。');
             console.error(err);
         });
+    }
+
+    startTrialBtn.addEventListener('click', startTrialSession);
+    settingsToggle.addEventListener('click', function () {
+        sessionForm.classList.toggle('hidden');
+    });
+    sessionForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        var config = getCurrentSessionConfig();
+        var validated = SessionModel.validateSessionConfig(config);
+        if (!validated.ok) {
+            alert(validated.reason);
+            return;
+        }
+        activeStrategy = PoseMath.getActivityStrategy(config.activity);
+        if (activeSession && activeSession.state === 'placement') {
+            activeSession.plannedMinutes = validated.plannedMinutes;
+            activeSession.plannedMs = validated.plannedMinutes * 60 * 1000;
+            activeSession.activity = validated.activity;
+        }
+        sessionForm.classList.add('hidden');
+        setStatus('设置已应用。请确认头部和双肩入镜，然后点击开始校准。', 'info');
     });
 
     calibBtn.addEventListener('click', function () {
@@ -427,7 +457,7 @@
         }
         if (!lastReliablePoseAt || Date.now() - lastReliablePoseAt > 1500) {
             debugLog('[sit-down] calibration ignored before reliable pose', { lastReliablePoseAt: lastReliablePoseAt });
-            setStatus('还不能校准：请先让头部、双肩和髋部清楚进入画面。', 'warn');
+            setStatus('还不能校准：请先让头部和双肩清楚进入画面。', 'warn');
             return;
         }
         if (activeSession.state === 'placement') activeSession = SessionModel.transitionSession(activeSession, 'PLACEMENT_OK', Date.now());

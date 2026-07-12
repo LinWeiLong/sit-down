@@ -60,6 +60,12 @@ if (!app.includes('模型还在加载') || !app.includes('calibration ignored be
 if (!app.includes('lastReliablePoseAt') || !app.includes('calibration ignored before reliable pose')) {
   throw new Error('Calibration button must require a recent reliable pose before starting calibration.');
 }
+if (app.includes('髋部')) {
+  throw new Error('Runtime guidance must not require hips in desk upper-body mode.');
+}
+if (!app.includes('startTrialSession') || !app.includes('settingsToggle')) {
+  throw new Error('Runtime must start from trial CTA and keep session settings inside the recognition view.');
+}
 if (!app.includes('cancelCalibrationWithMessage') || !app.includes('CALIBRATION_FAILED')) {
   throw new Error('Calibration must recover when reliable samples cannot be collected.');
 }
