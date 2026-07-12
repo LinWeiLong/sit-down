@@ -57,5 +57,11 @@ if (/animalFaces|animalBtn/.test(app)) throw new Error('Focus demo must not keep
 if (!app.includes('模型还在加载') || !app.includes('calibration ignored before first pose results')) {
   throw new Error('Calibration button must explain when MediaPipe has not produced the first result yet.');
 }
+if (!app.includes('lastReliablePoseAt') || !app.includes('calibration ignored before reliable pose')) {
+  throw new Error('Calibration button must require a recent reliable pose before starting calibration.');
+}
+if (!app.includes('cancelCalibrationWithMessage') || !app.includes('CALIBRATION_FAILED')) {
+  throw new Error('Calibration must recover when reliable samples cannot be collected.');
+}
 
 console.log('Public demo structure and local runtime assets are valid.');

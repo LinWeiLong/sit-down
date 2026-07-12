@@ -32,6 +32,7 @@
     var lastFrameAt = null;
     var sessionTimer = null;
     var firstResultsLogged = false;
+    var lastReliablePoseAt = 0;
     var encouragementSpoken = false;
     var postureState = {
         currentLabels: [],
@@ -189,6 +190,17 @@
         setStatus('请保持孩子平时的自然坐姿，正在采集校准样本...', 'ok');
     }
 
+    function cancelCalibrationWithMessage(message) {
+        calibStartTime = null;
+        calibBuffer = [];
+        calibBtn.disabled = false;
+        if (activeSession && activeSession.state === 'calibration') {
+            try { activeSession = SessionModel.transitionSession(activeSession, 'CALIBRATION_FAILED', Date.now()); } catch (e) { }
+        }
+        setStatus(message, 'warn');
+    }
+
+
     function buildBaseline(samples) {
         var result = {};
         Object.keys(samples[0]).forEach(function (key) {
@@ -287,13 +299,22 @@
         if (activeSession.state !== 'focus') drawPlacement(results, w, h);
 
         if (!landmarks) {
+            if (activeSession.state === 'calibration' && calibStartTime && Date.now() - calibStartTime >= CALIBRATION_MS) {
+                cancelCalibrationWithMessage('校准失败：没有检测到孩子，请让头部、双肩和髋部都进入画面后重试。');
+                return;
+            }
             setStatus('还没有检测到孩子，请让头部、双肩和髋部都进入画面。', 'warn');
             return;
         }
         if (!reliable) {
+            if (activeSession.state === 'calibration' && calibStartTime && Date.now() - calibStartTime >= CALIBRATION_MS) {
+                cancelCalibrationWithMessage('校准失败：关键部位不够清楚，请确认头部、双肩和髋部没有被遮挡后重试。');
+                return;
+            }
             setStatus('关键部位不够清楚，请确认头部、双肩和髋部没有被遮挡。', 'warn');
             return;
         }
+        lastReliablePoseAt = Date.now();
 
         var metrics = PoseMath.getMetrics(landmarks);
         if (!smoothMetrics) smoothMetrics = Object.assign({}, metrics);
@@ -402,6 +423,11 @@
         if (!firstResultsLogged) {
             debugLog('[sit-down] calibration ignored before first pose results');
             setStatus('模型还在加载或初始化，请等画面稳定后再点开始校准。', 'warn');
+            return;
+        }
+        if (!lastReliablePoseAt || Date.now() - lastReliablePoseAt > 1500) {
+            debugLog('[sit-down] calibration ignored before reliable pose', { lastReliablePoseAt: lastReliablePoseAt });
+            setStatus('还不能校准：请先让头部、双肩和髋部清楚进入画面。', 'warn');
             return;
         }
         if (activeSession.state === 'placement') activeSession = SessionModel.transitionSession(activeSession, 'PLACEMENT_OK', Date.now());
