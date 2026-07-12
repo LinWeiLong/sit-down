@@ -61,8 +61,12 @@
     function fitCanvas() {
         if (!canvas.width || !canvas.height) return;
         var scale = Math.min(window.innerWidth / canvas.width, window.innerHeight / canvas.height);
-        canvas.style.width = Math.round(canvas.width * scale) + 'px';
-        canvas.style.height = Math.round(canvas.height * scale) + 'px';
+        var width = Math.round(canvas.width * scale) + 'px';
+        var height = Math.round(canvas.height * scale) + 'px';
+        canvas.style.width = width;
+        canvas.style.height = height;
+        video.style.width = width;
+        video.style.height = height;
     }
 
     function speakText(text) {
@@ -396,5 +400,3 @@
         }
     });
 })();
-
-

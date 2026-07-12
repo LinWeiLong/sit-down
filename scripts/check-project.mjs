@@ -31,6 +31,10 @@ for (const path of ['src/styles/app.css', 'src/js/posture-math.js', 'src/js/sess
   if (!sw.includes(path)) throw new Error('Service worker app shell is missing: ' + path);
 }
 
+const css = await readFile('src/styles/app.css', 'utf8');
+if (/video\s*\{[^}]*display\s*:\s*none\b/is.test(css)) {
+  throw new Error('Camera preview video must not be permanently hidden; placement/calibration should show the raw camera feed.');
+}
 const app = await readFile('src/js/app.js', 'utf8');
 if (/animalFaces|animalBtn/.test(app)) throw new Error('Focus demo must not keep child-attracting animal overlay controls.');
 

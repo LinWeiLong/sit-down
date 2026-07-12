@@ -161,6 +161,7 @@ select {
     padding: 0;
 }
 
+.study-view.focus-mode video,
 .study-view.focus-mode canvas,
 .study-view.focus-mode .status-card,
 .study-view.focus-mode .study-controls {
@@ -175,14 +176,21 @@ select {
 }
 
 video {
-    display: none;
-}
-
-canvas {
     display: block;
     max-width: 100vw;
     max-height: 100vh;
     background: #000;
+    transform: scaleX(-1);
+}
+
+canvas {
+    position: absolute;
+    z-index: 1;
+    display: block;
+    max-width: 100vw;
+    max-height: 100vh;
+    background: transparent;
+    pointer-events: none;
 }
 
 .status-card {
