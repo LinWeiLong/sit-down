@@ -1,7 +1,11 @@
-const CACHE_NAME = 'sit-down-v2';
+const CACHE_NAME = 'sit-down-v3';
 const APP_SHELL = [
   './',
   './index.html',
+  './src/styles/app.css',
+  './src/js/posture-math.js',
+  './src/js/session-model.js',
+  './src/js/app.js',
   './vendor/mediapipe/pose/pose.js',
   './vendor/mediapipe/camera_utils/camera_utils.js',
   './vendor/mediapipe/drawing_utils/drawing_utils.js'

@@ -1,0 +1,37 @@
+import { access, readFile } from 'node:fs/promises';
+
+const requiredFiles = [
+  'index.html',
+  'sw.js',
+  'src/styles/app.css',
+  'src/js/posture-math.js',
+  'src/js/session-model.js',
+  'src/js/app.js',
+  'scripts/build-web.mjs',
+  'vendor/mediapipe/pose/pose.js',
+  'vendor/mediapipe/pose/pose_landmark_full.tflite',
+  'vendor/mediapipe/pose/pose_solution_simd_wasm_bin.wasm',
+  'vendor/mediapipe/camera_utils/camera_utils.js',
+  'vendor/mediapipe/drawing_utils/drawing_utils.js'
+];
+
+await Promise.all(requiredFiles.map(path => access(path)));
+
+const html = await readFile('index.html', 'utf8');
+if (/<(?:script|link)[^>]+(?:src|href)=["']https?:/i.test(html)) {
+  throw new Error('Runtime CDN references are not allowed in index.html');
+}
+
+for (const path of ['src/styles/app.css', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
+  if (!html.includes(path)) throw new Error('index.html is missing runtime asset: ' + path);
+}
+
+const sw = await readFile('sw.js', 'utf8');
+for (const path of ['src/styles/app.css', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
+  if (!sw.includes(path)) throw new Error('Service worker app shell is missing: ' + path);
+}
+
+const app = await readFile('src/js/app.js', 'utf8');
+if (/animalFaces|animalBtn/.test(app)) throw new Error('Focus demo must not keep child-attracting animal overlay controls.');
+
+console.log('Public demo structure and local runtime assets are valid.');

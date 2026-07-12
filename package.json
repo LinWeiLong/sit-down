@@ -1,0 +1,16 @@
+{
+  "name": "sit-down-demo",
+  "version": "0.3.0",
+  "private": true,
+  "description": "Public browser posture demo",
+  "scripts": {
+    "check": "node scripts/check-project.mjs",
+    "build:web": "node scripts/build-web.mjs",
+    "test": "node --test tests/*.test.cjs",
+    "verify": "node scripts/check-project.mjs && node --test tests/*.test.cjs && node scripts/build-web.mjs",
+    "serve": "python -m http.server 8080"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

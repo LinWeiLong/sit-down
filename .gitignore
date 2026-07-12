@@ -2,3 +2,10 @@ cert.pem
 key.pem
 https_server.py
 __pycache__/
+node_modules/
+.pnpm-store/
+dist/
+app-private/
+.tools/
+.codex/
+.agents/
