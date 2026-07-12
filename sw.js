@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sit-down-v5';
+const CACHE_NAME = 'sit-down-v6';
 const APP_SHELL = [
   './',
   './index.html',
@@ -28,7 +28,16 @@ self.addEventListener('activate', event => {
 });
 
 self.addEventListener('fetch', event => {
-  if (event.request.method !== 'GET' || new URL(event.request.url).origin !== self.location.origin) return;
+  if (event.request.method !== 'GET') return;
+
+  const requestUrl = new URL(event.request.url);
+  if (requestUrl.origin !== self.location.origin) return;
+
+  // MediaPipe wasm/model/data files are large runtime dependencies. Let the browser
+  // fetch them directly instead of wrapping them in Cache Storage, which can stall
+  // wasm initialization on some mobile browsers.
+  if (requestUrl.pathname.includes('/vendor/mediapipe/')) return;
+
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request).then(response => {

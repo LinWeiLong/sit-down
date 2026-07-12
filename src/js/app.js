@@ -399,6 +399,11 @@
 
     calibBtn.addEventListener('click', function () {
         if (!activeSession) return;
+        if (!firstResultsLogged) {
+            debugLog('[sit-down] calibration ignored before first pose results');
+            setStatus('模型还在加载或初始化，请等画面稳定后再点开始校准。', 'warn');
+            return;
+        }
         if (activeSession.state === 'placement') activeSession = SessionModel.transitionSession(activeSession, 'PLACEMENT_OK', Date.now());
         beginCalibration();
     });
