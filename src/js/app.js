@@ -19,7 +19,7 @@
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
-    var APP_VERSION = '20260714-focus-preview-log';
+    var APP_VERSION = '20260714-recalibrate-feedback';
     var debugLog = window.__sitDownDebugLog || function () { };
     debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__, appVersion: APP_VERSION });
 
@@ -117,6 +117,23 @@
         lastFrameAt = null;
     }
 
+    function resetToPlacementForRecalibration(config) {
+        if (sessionTimer) clearInterval(sessionTimer);
+        sessionTimer = null;
+        activeSession = SessionModel.createStudySession(config);
+        activeStrategy = PoseMath.getActivityStrategy(config.activity);
+        activeSession = SessionModel.transitionSession(activeSession, 'START_PLACEMENT', Date.now());
+        baseline = null;
+        calibStartTime = null;
+        calibBuffer = [];
+        smoothMetrics = null;
+        focusStartedAt = null;
+        focusPreviewLogged = false;
+        encouragementSpoken = false;
+        resetPostureState();
+        calibBtn.disabled = false;
+        setStatus('设置已应用。请确认头部和双肩入镜，然后点击开始校准。', 'info');
+    }
     function renderResult(reason) {
         var now = Date.now();
         var actualMs = focusStartedAt ? Math.max(0, now - focusStartedAt) : 0;
@@ -228,6 +245,26 @@
         });
     }
 
+    function renderFocusFeedback(classified) {
+        if (!classified.scoreable) {
+            setStatus('姿势校验中：当前画面变化较大，请保持设备和坐姿稳定。', 'warn');
+            return;
+        }
+        if (classified.labels.indexOf('low-head') !== -1) {
+            setStatus('检测到低头趋势：把头抬一点，眼睛离书本远一点。', 'warn');
+            return;
+        }
+        if (classified.labels.indexOf('hunched') !== -1) {
+            setStatus('检测到含胸弓背趋势：腰背坐直一点，肩膀放轻松。', 'warn');
+            return;
+        }
+        if (classified.labels.indexOf('good') !== -1) {
+            setStatus('坐姿很好，继续保持。', 'ok');
+            return;
+        }
+        setStatus('姿势校验中，请保持自然坐姿。', 'info');
+    }
+
     function handleFocusFrame(metrics, reliable) {
         var now = Date.now();
         var delta = lastFrameAt ? Math.min(now - lastFrameAt, 1000) : 0;
@@ -241,12 +278,14 @@
 
         if (!classified.scoreable) {
             postureState.unscorableMs += delta;
+            renderFocusFeedback(classified);
             return;
         }
 
         postureState.reliableMs += delta;
         if (classified.labels.indexOf('good') !== -1) postureState.goodMs += delta;
         updateAbnormalTimers(classified.labels, now);
+        renderFocusFeedback(classified);
     }
 
     function drawPlacement(results, w, h) {
@@ -420,6 +459,11 @@
 
     startTrialBtn.addEventListener('click', startTrialSession);
     settingsToggle.addEventListener('click', function () {
+        var willShow = sessionForm.classList.contains('hidden');
+        if (willShow && activeSession && activeSession.state === 'focus') {
+            resetToPlacementForRecalibration(getCurrentSessionConfig());
+            setStatus('已暂停本轮学习。调整设置后，可以重新开始校准。', 'info');
+        }
         sessionForm.classList.toggle('hidden');
     });
     sessionForm.addEventListener('submit', function (event) {
@@ -430,14 +474,8 @@
             alert(validated.reason);
             return;
         }
-        activeStrategy = PoseMath.getActivityStrategy(config.activity);
-        if (activeSession && activeSession.state === 'placement') {
-            activeSession.plannedMinutes = validated.plannedMinutes;
-            activeSession.plannedMs = validated.plannedMinutes * 60 * 1000;
-            activeSession.activity = validated.activity;
-        }
+        resetToPlacementForRecalibration({ activity: validated.activity, plannedMinutes: validated.plannedMinutes });
         sessionForm.classList.add('hidden');
-        setStatus('设置已应用。请确认头部和双肩入镜，然后点击开始校准。', 'info');
     });
 
     calibBtn.addEventListener('click', function () {

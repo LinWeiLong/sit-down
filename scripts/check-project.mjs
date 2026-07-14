@@ -69,6 +69,12 @@ if (!app.includes('startTrialSession') || !app.includes('settingsToggle')) {
 if (!app.includes('APP_VERSION') || !app.includes('focus preview drawing')) {
   throw new Error('Debug logs must expose app version and focus preview drawing state.');
 }
+if (!app.includes('resetToPlacementForRecalibration') || !app.includes('clearInterval(sessionTimer)')) {
+  throw new Error('Settings must allow restarting placement and calibration after focus starts.');
+}
+if (!app.includes('renderFocusFeedback') || !app.includes('renderFocusFeedback(classified)') || !app.includes('坐姿很好') || !app.includes('检测到低头')) {
+  throw new Error('Focus mode must show live posture feedback instead of silently accumulating data.');
+}
 if (app.includes('blackoutBtn') || app.includes('黑屏学习')) {
   throw new Error('Public demo must not include blackout mode; focus blackout belongs in the Android app.');
 }
