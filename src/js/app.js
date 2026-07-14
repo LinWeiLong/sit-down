@@ -13,7 +13,6 @@
     var durationInput = document.getElementById('durationInput');
     var durationOptions = Array.from(document.querySelectorAll('.duration-option'));
     var calibBtn = document.getElementById('calibBtn');
-    var blackoutBtn = document.getElementById('blackoutBtn');
     var endBtn = document.getElementById('endBtn');
     var backHomeBtn = document.getElementById('backHomeBtn');
     var resultSummary = document.getElementById('resultSummary');
@@ -91,21 +90,6 @@
         window.speechSynthesis.speak(utter);
     }
 
-    function enterFocusSurface() {
-        studyView.classList.add('focus-mode');
-        if (navigator.wakeLock && navigator.wakeLock.request) {
-            navigator.wakeLock.request('screen').catch(function () { });
-        }
-        var bridge = window.AndroidStudyBridge;
-        if (bridge && typeof bridge.enterFocusMode === 'function') bridge.enterFocusMode();
-    }
-
-    function leaveFocusSurface() {
-        studyView.classList.remove('focus-mode');
-        var bridge = window.AndroidStudyBridge;
-        if (bridge && typeof bridge.leaveFocusMode === 'function') bridge.leaveFocusMode();
-    }
-
     function stopCamera() {
         if (sessionTimer) clearInterval(sessionTimer);
         sessionTimer = null;
@@ -114,7 +98,6 @@
             video.srcObject.getTracks().forEach(function (track) { track.stop(); });
             video.srcObject = null;
         }
-        leaveFocusSurface();
     }
 
     function resetPostureState() {
@@ -171,9 +154,8 @@
         focusStartedAt = Date.now();
         resetPostureState();
         encouragementSpoken = false;
-        blackoutBtn.classList.remove('hidden');
         calibBtn.disabled = true;
-        setStatus('校准完成，开始学习。需要黑屏时请点击黑屏学习。', 'ok');
+        setStatus('校准完成，开始学习。Demo 将继续显示识别画面，APP 里再进入专注黑屏模式。', 'ok');
         speakText('校准完成，开始学习。');
         sessionTimer = setInterval(function () {
             if (!activeSession || activeSession.state !== 'focus') return;
@@ -466,20 +448,12 @@
         if (activeSession.state === 'placement') activeSession = SessionModel.transitionSession(activeSession, 'PLACEMENT_OK', Date.now());
         beginCalibration();
     });
-
-    blackoutBtn.addEventListener('click', function () {
-        if (!activeSession || activeSession.state !== 'focus') return;
-        enterFocusSurface();
-        speakText('已进入黑屏学习模式。');
-    });
     endBtn.addEventListener('click', function () { completeSession('manual'); });
     backHomeBtn.addEventListener('click', function () {
         activeSession = null;
         baseline = null;
         focusStartedAt = null;
         calibBtn.disabled = false;
-        blackoutBtn.classList.add('hidden');
-        leaveFocusSurface();
         setView('home');
     });
 

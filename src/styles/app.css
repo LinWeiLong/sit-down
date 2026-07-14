@@ -161,20 +161,6 @@ select {
     padding: 0;
 }
 
-.study-view.focus-mode video,
-.study-view.focus-mode canvas,
-.study-view.focus-mode .status-card,
-.study-view.focus-mode .study-controls {
-    display: none;
-}
-
-.study-view.focus-mode::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: #000;
-}
-
 video {
     display: block;
     max-width: 100vw;

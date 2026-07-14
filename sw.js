@@ -1,4 +1,4 @@
-const CACHE_NAME = 'sit-down-v8';
+const CACHE_NAME = 'sit-down-v9';
 const APP_SHELL = [
   './',
   './index.html',
