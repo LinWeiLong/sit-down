@@ -72,6 +72,9 @@ if (app.includes('blackoutBtn') || app.includes('黑屏学习')) {
 if (app.includes("document.hidden && activeSession && activeSession.state === 'focus'")) {
   throw new Error('Visibility changes must not immediately interrupt a focus session in the web demo.');
 }
+if (/activeSession\.state\s*!==\s*['"]focus['"]\)\s*drawPlacement/.test(app)) {
+  throw new Error('Public demo must keep drawing the camera preview during focus sessions.');
+}
 if (!app.includes('cancelCalibrationWithMessage') || !app.includes('CALIBRATION_FAILED')) {
   throw new Error('Calibration must recover when reliable samples cannot be collected.');
 }

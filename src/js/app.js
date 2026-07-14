@@ -284,7 +284,7 @@
         var landmarks = results.poseLandmarks;
         var reliable = !!landmarks && PoseMath.hasReliableLandmarks(landmarks);
 
-        if (activeSession.state !== 'focus') drawPlacement(results, w, h);
+        drawPlacement(results, w, h);
 
         if (!landmarks) {
             if (activeSession.state === 'calibration' && calibStartTime && Date.now() - calibStartTime >= CALIBRATION_MS) {
