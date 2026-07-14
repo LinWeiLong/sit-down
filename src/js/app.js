@@ -19,8 +19,9 @@
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
+    var APP_VERSION = '20260714-focus-preview-log';
     var debugLog = window.__sitDownDebugLog || function () { };
-    debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__ });
+    debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__, appVersion: APP_VERSION });
 
     var pose = null;
     var camera = null;
@@ -34,6 +35,7 @@
     var lastFrameAt = null;
     var sessionTimer = null;
     var firstResultsLogged = false;
+    var focusPreviewLogged = false;
     var lastReliablePoseAt = 0;
     var encouragementSpoken = false;
     var postureState = {
@@ -156,6 +158,7 @@
         encouragementSpoken = false;
         calibBtn.disabled = true;
         setStatus('校准完成，开始学习。Demo 将继续显示识别画面，APP 里再进入专注黑屏模式。', 'ok');
+        debugLog('[sit-down] focus started', { appVersion: APP_VERSION, canvasWidth: canvas.width, canvasHeight: canvas.height, videoWidth: video.videoWidth, videoHeight: video.videoHeight });
         speakText('校准完成，开始学习。');
         sessionTimer = setInterval(function () {
             if (!activeSession || activeSession.state !== 'focus') return;
@@ -285,6 +288,10 @@
         var reliable = !!landmarks && PoseMath.hasReliableLandmarks(landmarks);
 
         drawPlacement(results, w, h);
+        if (activeSession.state === 'focus' && !focusPreviewLogged) {
+            focusPreviewLogged = true;
+            debugLog('[sit-down] focus preview drawing', { appVersion: APP_VERSION, hasImage: !!results.image, hasLandmarks: !!landmarks, canvasWidth: w, canvasHeight: h });
+        }
 
         if (!landmarks) {
             if (activeSession.state === 'calibration' && calibStartTime && Date.now() - calibStartTime >= CALIBRATION_MS) {

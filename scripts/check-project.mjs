@@ -66,6 +66,9 @@ if (app.includes('髋部')) {
 if (!app.includes('startTrialSession') || !app.includes('settingsToggle')) {
   throw new Error('Runtime must start from trial CTA and keep session settings inside the recognition view.');
 }
+if (!app.includes('APP_VERSION') || !app.includes('focus preview drawing')) {
+  throw new Error('Debug logs must expose app version and focus preview drawing state.');
+}
 if (app.includes('blackoutBtn') || app.includes('黑屏学习')) {
   throw new Error('Public demo must not include blackout mode; focus blackout belongs in the Android app.');
 }
