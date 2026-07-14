@@ -2,11 +2,12 @@ import { access, readFile } from 'node:fs/promises';
 
 const requiredFiles = [
   'index.html',
+  'demo.html',
   'sw.js',
   'src/styles/app.css',
   'src/js/posture-math.js',
   'src/js/session-model.js',
-  'src/js/app.js',
+  'src/js/demo-app.js',
   'src/js/debug-bootstrap.js',
   'vendor/vconsole/vconsole.min.js',
   'scripts/build-web.mjs',
@@ -26,19 +27,30 @@ const requiredFiles = [
 await Promise.all(requiredFiles.map(path => access(path)));
 
 const html = await readFile('index.html', 'utf8');
-if (/<(?:script|link)[^>]+(?:src|href)=["']https?:/i.test(html)) {
-  throw new Error('Runtime CDN references are not allowed in index.html');
-}
+const demoHtml = await readFile('demo.html', 'utf8');
 
-for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
-  if (!html.includes(path)) throw new Error('index.html is missing runtime asset: ' + path);
+if (/<(?:script|link)[^>]+(?:src|href)=["']https?:/i.test(html) || /<(?:script|link)[^>]+(?:src|href)=["']https?:/i.test(demoHtml)) {
+  throw new Error('Runtime CDN references are not allowed in public pages');
+}
+if (html.includes('vendor/mediapipe') || html.includes('demo-app.js') || html.includes('video id=') || html.includes('canvas id=')) {
+  throw new Error('index.html must be a landing page only; camera runtime belongs in demo.html.');
+}
+if (!html.includes('demo.html')) {
+  throw new Error('Landing page must link to demo.html.');
+}
+if (!demoHtml.includes('vendor/mediapipe/pose/pose.js') || !demoHtml.includes('src/js/demo-app.js')) {
+  throw new Error('demo.html must load the local MediaPipe runtime and demo-app.js.');
+}
+if (!html.includes('src/styles/app.css')) throw new Error('index.html is missing shared stylesheet.');
+for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/demo-app.js']) {
+  if (!demoHtml.includes(path)) throw new Error('demo.html is missing runtime asset: ' + path);
 }
 
 const sw = await readFile('sw.js', 'utf8');
 if (!sw.includes("pathname.includes('/vendor/mediapipe/')")) {
   throw new Error('Service worker must bypass MediaPipe runtime assets to avoid mobile wasm/model initialization stalls.');
 }
-for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'vendor/vconsole/vconsole.min.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/app.js']) {
+for (const path of ['demo.html', 'src/styles/app.css', 'src/js/debug-bootstrap.js', 'vendor/vconsole/vconsole.min.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/demo-app.js']) {
   if (!sw.includes(path)) throw new Error('Service worker app shell is missing: ' + path);
 }
 
@@ -52,7 +64,7 @@ if (!debugBootstrap.includes("params.get('debug')") || !debugBootstrap.includes(
   throw new Error('debug-bootstrap must gate local vConsole behind ?debug=1.');
 }
 
-const app = await readFile('src/js/app.js', 'utf8');
+const app = await readFile('src/js/demo-app.js', 'utf8');
 if (/animalFaces|animalBtn/.test(app)) throw new Error('Focus demo must not keep child-attracting animal overlay controls.');
 if (!app.includes('模型还在加载') || !app.includes('calibration ignored before first pose results')) {
   throw new Error('Calibration button must explain when MediaPipe has not produced the first result yet.');
@@ -87,5 +99,13 @@ if (/activeSession\.state\s*!==\s*['"]focus['"]\)\s*drawPlacement/.test(app)) {
 if (!app.includes('cancelCalibrationWithMessage') || !app.includes('CALIBRATION_FAILED')) {
   throw new Error('Calibration must recover when reliable samples cannot be collected.');
 }
+if (!app.includes('var ALERT_DELAY_MS = 2000') || !app.includes('var ALERT_COOLDOWN_MS = 10000')) {
+  throw new Error('Demo voice alert timing must match the original low-head detection feel.');
+}
 
-console.log('Public demo structure and local runtime assets are valid.');
+const postureMath = await readFile('src/js/posture-math.js', 'utf8');
+if (!postureMath.includes('headDownRatio: 0.85') || !postureMath.includes('chinDownRatio: 0.7')) {
+  throw new Error('Low-head thresholds must stay close to the original demo sensitivity.');
+}
+
+console.log('Public landing/demo structure and local runtime assets are valid.');

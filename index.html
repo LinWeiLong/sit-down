@@ -3,73 +3,26 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>小坐姿陪伴</title>
-    <script src="./src/js/debug-bootstrap.js?v=20260714-recalibrate-feedback"></script>
-    <script src="./vendor/mediapipe/pose/pose.js"></script>
-    <script src="./vendor/mediapipe/camera_utils/camera_utils.js"></script>
-    <script src="./vendor/mediapipe/drawing_utils/drawing_utils.js"></script>
-    <link rel="stylesheet" href="./src/styles/app.css?v=20260714-recalibrate-feedback">
+    <link rel="stylesheet" href="./src/styles/app.css?v=20260714-demo-refactor">
 </head>
 
 <body>
-    <main id="app" class="app-shell">
-        <section id="homeView" class="view home-view landing-view">
+    <main id="app" class="app-shell landing-shell">
+        <section class="view home-view landing-view landing-only">
             <div class="topline">本地识别 · 不录像 · 不上传</div>
             <h1>孩子写字看书时，轻轻提醒坐姿。</h1>
-            <p class="intro">小坐姿陪伴适合家长把手机、平板或旧手机放在书桌前方，在孩子写字、阅读时观察头部和双肩，发现长时间低头或含胸趋势时用语音提醒。</p>
+            <p class="intro">小坐姿陪伴面向家长，用手机、平板或旧手机在书桌前方观察孩子写字、阅读时的低头趋势，并用温和语音提醒孩子调整。</p>
             <div class="landing-card">
-                <div><strong>书桌上半身模式</strong><span>不要求髋部入镜，更贴近写作业场景。</span></div>
-                <div><strong>本机处理</strong><span>摄像头画面只在浏览器内临时识别。</span></div>
-                <div><strong>先试试看</strong><span>默认 15 分钟写字作业，进入后可调整。</span></div>
+                <div><strong>低头提醒优先</strong><span>恢复接近原始 Demo 的低头检测手感，重点解决写字看书时头越埋越低的问题。</span></div>
+                <div><strong>书桌上半身模式</strong><span>Demo 只要求头部和双肩清楚入镜，更贴近孩子做作业的真实场景。</span></div>
+                <div><strong>隐私友好</strong><span>摄像头画面只在本机浏览器内临时识别，不上传、不录像。</span></div>
             </div>
-            <button id="startTrialBtn" class="primary-action landing-action" type="button">开始试用</button>
-            <div class="privacy-note">建议把设备固定在孩子正前方或左/右前方，让头部和双肩清楚进入画面。</div>
-        </section>
-
-        <section id="studyView" class="view study-view hidden">
-            <video id="video" playsinline></video>
-            <canvas id="canvas" width="640" height="480"></canvas>
-            <div id="status" class="status-card">正在准备...</div>
-            <div id="studyControls" class="study-controls">
-                <button id="calibBtn" type="button">开始校准</button>
-                <button id="settingsToggle" type="button" class="secondary-action">设置</button>
-                <button id="endBtn" type="button" class="secondary-action">结束</button>
-            </div>
-            <form id="sessionForm" class="settings-panel hidden">
-                <label class="field-label" for="activitySelect">本轮做什么</label>
-                <select id="activitySelect">
-                    <option value="writing">写字作业</option>
-                    <option value="reading">阅读</option>
-                    <option value="drawing">绘画/手工</option>
-                    <option value="other">其他</option>
-                </select>
-
-                <div class="field-label">学习周期</div>
-                <div class="duration-grid" role="group" aria-label="学习周期快捷选项">
-                    <button type="button" class="duration-option" data-minutes="10">10分钟</button>
-                    <button type="button" class="duration-option active" data-minutes="15">15分钟</button>
-                    <button type="button" class="duration-option" data-minutes="20">20分钟</button>
-                </div>
-                <label class="custom-duration">
-                    自定义
-                    <input id="durationInput" type="number" min="5" max="45" step="1" value="15">
-                    分钟
-                </label>
-                <button class="primary-action" type="submit">应用设置</button>
-            </form>
-        </section>
-
-        <section id="resultView" class="view result-view hidden">
-            <h2>本轮结束</h2>
-            <div id="resultSummary" class="result-summary"></div>
-            <button id="backHomeBtn" class="primary-action" type="button">回到首页</button>
+            <a class="primary-action landing-action" href="./demo.html">立即体验 Demo</a>
+            <div class="privacy-note">完整专注模式、长期记录和更细的家长设置会放在 Android APP 中；公开页面只保留介绍和简单体验。</div>
         </section>
     </main>
-
-    <script src="./src/js/posture-math.js?v=20260714-recalibrate-feedback"></script>
-    <script src="./src/js/session-model.js?v=20260714-recalibrate-feedback"></script>
-    <script src="./src/js/app.js?v=20260714-recalibrate-feedback"></script>
 </body>
 
 </html>

@@ -2,6 +2,7 @@ import { cp, mkdir, rm } from 'node:fs/promises';
 
 const files = [
   'index.html',
+  'demo.html',
   'sw.js',
   'src',
   'vendor'

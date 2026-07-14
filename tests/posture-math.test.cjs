@@ -145,3 +145,26 @@ test('posture classifier pauses scoring when device scale changes sharply', () =
         strategy: getActivityStrategy('reading')
     }), { scoreable: false, labels: ['unscorable'], reason: 'scale-shift' });
 });
+
+test('writing low-head sensitivity matches original demo feel', () => {
+    const strategy = getActivityStrategy('writing');
+    const baseline = {
+        noseShoulderDist: 0.25,
+        noseMouthDist: 0.08,
+        trunkForwardRatio: 0.05,
+        shoulderWidth: 0.3,
+        trunkLength: 0.35
+    };
+
+    assert.deepEqual(classifyPostureFrame({
+        metrics: { noseShoulderDist: 0.205, noseMouthDist: 0.08, trunkForwardRatio: 0.05, shoulderWidth: 0.3, trunkLength: 0.35 },
+        baseline,
+        strategy
+    }), { scoreable: true, labels: ['low-head'], reason: 'scoreable' });
+
+    assert.deepEqual(classifyPostureFrame({
+        metrics: { noseShoulderDist: 0.25, noseMouthDist: 0.054, trunkForwardRatio: 0.05, shoulderWidth: 0.3, trunkLength: 0.35 },
+        baseline,
+        strategy
+    }), { scoreable: true, labels: ['low-head'], reason: 'scoreable' });
+});

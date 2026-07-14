@@ -121,6 +121,13 @@ select {
     color: #1f2a2e;
 }
 
+.primary-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+}
+
 .duration-option.active,
 .primary-action,
 #calibBtn {

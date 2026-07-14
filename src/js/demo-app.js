@@ -19,7 +19,7 @@
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
-    var APP_VERSION = '20260714-recalibrate-feedback';
+    var APP_VERSION = '20260714-demo-refactor';
     var debugLog = window.__sitDownDebugLog || function () { };
     debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__, appVersion: APP_VERSION });
 
@@ -52,8 +52,8 @@
 
     var CALIBRATION_MS = 3000;
     var MIN_CALIBRATION_SAMPLES = 10;
-    var ALERT_DELAY_MS = 8000;
-    var ALERT_COOLDOWN_MS = 60000;
+    var ALERT_DELAY_MS = 2000;
+    var ALERT_COOLDOWN_MS = 10000;
     var TARGET_FRAME_INTERVAL_MS = 100;
 
     function setView(name) {

@@ -6,30 +6,30 @@
     var ACTIVITY_STRATEGIES = {
         writing: {
             label: '写字作业',
-            headDownRatio: 0.72,
-            chinDownRatio: 0.58,
+            headDownRatio: 0.85,
+            chinDownRatio: 0.7,
             trunkForwardDelta: 0.22,
             prompt: '抬一点头，腰背坐直一点'
         },
         reading: {
             label: '阅读',
-            headDownRatio: 0.66,
-            chinDownRatio: 0.52,
+            headDownRatio: 0.85,
+            chinDownRatio: 0.7,
             trunkForwardDelta: 0.2,
             prompt: '把书拿近一点，头不用低太多'
         },
         drawing: {
             label: '绘画/手工',
-            headDownRatio: 0.65,
-            chinDownRatio: 0.5,
+            headDownRatio: 0.85,
+            chinDownRatio: 0.7,
             trunkForwardDelta: 0.24,
             experimental: true,
             prompt: '稍微坐直一点，眼睛离桌面远一点'
         },
         other: {
             label: '其他',
-            headDownRatio: 0.68,
-            chinDownRatio: 0.52,
+            headDownRatio: 0.85,
+            chinDownRatio: 0.7,
             trunkForwardDelta: 0.22,
             experimental: true,
             prompt: '调整一下坐姿，休息一下肩膀'
