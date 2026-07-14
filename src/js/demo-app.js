@@ -19,7 +19,7 @@
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
-    var APP_VERSION = '20260714-demo-refactor';
+    var APP_VERSION = '20260715-preload-assets';
     var debugLog = window.__sitDownDebugLog || function () { };
     debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__, appVersion: APP_VERSION });
 
@@ -384,7 +384,7 @@
     }
 
     function setupPose() {
-        setStatus('模型加载中，请稍候...', 'info');
+        setStatus('正在加载本地姿态模型，首次加载本地姿态模型可能需要一点时间...', 'info');
         debugLog('[sit-down] setupPose begin', { hasPoseCtor: typeof Pose !== 'undefined' });
         pose = new Pose({ locateFile: function (file) {
             var located = './vendor/mediapipe/pose/' + file;
@@ -444,7 +444,7 @@
         calibBtn.disabled = false;
         sessionForm.classList.add('hidden');
         setView('study');
-        setStatus('正在请求摄像头权限。请把设备固定在书桌前方，让头部和双肩入镜。', 'info');
+        setStatus('正在准备摄像头和本地姿态模型。首次加载本地姿态模型可能需要一点时间...', 'info');
         startCamera().then(function () {
             debugLog('[sit-down] startCamera resolved in trial handler');
             setStatus('请确认头部和双肩都在画面里，然后点击开始校准。', 'info');

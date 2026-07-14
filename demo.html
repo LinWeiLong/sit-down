@@ -5,11 +5,15 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>小坐姿陪伴 Demo</title>
-    <script src="./src/js/debug-bootstrap.js?v=20260714-demo-refactor"></script>
+    <link rel="preload" href="./vendor/mediapipe/pose/pose_landmark_full.tflite" as="fetch" crossorigin="anonymous">
+    <link rel="preload" href="./vendor/mediapipe/pose/pose_solution_packed_assets.data" as="fetch" crossorigin="anonymous">
+    <link rel="preload" href="./vendor/mediapipe/pose/pose_solution_simd_wasm_bin.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
+    <link rel="preload" href="./vendor/mediapipe/pose/pose_solution_wasm_bin.wasm" as="fetch" type="application/wasm" crossorigin="anonymous">
+    <script src="./src/js/debug-bootstrap.js?v=20260715-preload-assets"></script>
     <script src="./vendor/mediapipe/pose/pose.js"></script>
     <script src="./vendor/mediapipe/camera_utils/camera_utils.js"></script>
     <script src="./vendor/mediapipe/drawing_utils/drawing_utils.js"></script>
-    <link rel="stylesheet" href="./src/styles/app.css?v=20260714-demo-refactor">
+    <link rel="stylesheet" href="./src/styles/app.css?v=20260715-preload-assets">
 </head>
 
 <body>
@@ -67,9 +71,9 @@
         </section>
     </main>
 
-    <script src="./src/js/posture-math.js?v=20260714-demo-refactor"></script>
-    <script src="./src/js/session-model.js?v=20260714-demo-refactor"></script>
-    <script src="./src/js/demo-app.js?v=20260714-demo-refactor"></script>
+    <script src="./src/js/posture-math.js?v=20260715-preload-assets"></script>
+    <script src="./src/js/session-model.js?v=20260715-preload-assets"></script>
+    <script src="./src/js/demo-app.js?v=20260715-preload-assets"></script>
 </body>
 
 </html>

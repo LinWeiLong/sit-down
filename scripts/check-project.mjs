@@ -41,6 +41,11 @@ if (!html.includes('demo.html')) {
 if (!demoHtml.includes('vendor/mediapipe/pose/pose.js') || !demoHtml.includes('src/js/demo-app.js')) {
   throw new Error('demo.html must load the local MediaPipe runtime and demo-app.js.');
 }
+for (const path of ['pose_landmark_full.tflite', 'pose_solution_packed_assets.data', 'pose_solution_simd_wasm_bin.wasm', 'pose_solution_wasm_bin.wasm']) {
+  if (!demoHtml.includes(`rel="preload"`) || !demoHtml.includes(path)) {
+    throw new Error('demo.html must preload heavy local MediaPipe assets: ' + path);
+  }
+}
 if (!html.includes('src/styles/app.css')) throw new Error('index.html is missing shared stylesheet.');
 for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/demo-app.js']) {
   if (!demoHtml.includes(path)) throw new Error('demo.html is missing runtime asset: ' + path);
@@ -101,6 +106,9 @@ if (!app.includes('cancelCalibrationWithMessage') || !app.includes('CALIBRATION_
 }
 if (!app.includes('var ALERT_DELAY_MS = 2000') || !app.includes('var ALERT_COOLDOWN_MS = 10000')) {
   throw new Error('Demo voice alert timing must match the original low-head detection feel.');
+}
+if (!app.includes('首次加载本地姿态模型可能需要一点时间') || !app.includes('modelComplexity: 1')) {
+  throw new Error('Demo must explain first-load model cost and keep modelComplexity at 1.');
 }
 
 const postureMath = await readFile('src/js/posture-math.js', 'utf8');
