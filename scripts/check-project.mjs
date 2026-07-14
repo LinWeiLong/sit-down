@@ -66,6 +66,12 @@ if (app.includes('髋部')) {
 if (!app.includes('startTrialSession') || !app.includes('settingsToggle')) {
   throw new Error('Runtime must start from trial CTA and keep session settings inside the recognition view.');
 }
+if (!app.includes('blackoutBtn') || !app.includes('黑屏学习')) {
+  throw new Error('Focus blackout must be a user-triggered control, not automatic after calibration.');
+}
+if (app.includes("document.hidden && activeSession && activeSession.state === 'focus'")) {
+  throw new Error('Visibility changes must not immediately interrupt a focus session in the web demo.');
+}
 if (!app.includes('cancelCalibrationWithMessage') || !app.includes('CALIBRATION_FAILED')) {
   throw new Error('Calibration must recover when reliable samples cannot be collected.');
 }

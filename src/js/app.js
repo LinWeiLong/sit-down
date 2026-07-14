@@ -13,6 +13,7 @@
     var durationInput = document.getElementById('durationInput');
     var durationOptions = Array.from(document.querySelectorAll('.duration-option'));
     var calibBtn = document.getElementById('calibBtn');
+    var blackoutBtn = document.getElementById('blackoutBtn');
     var endBtn = document.getElementById('endBtn');
     var backHomeBtn = document.getElementById('backHomeBtn');
     var resultSummary = document.getElementById('resultSummary');
@@ -170,7 +171,9 @@
         focusStartedAt = Date.now();
         resetPostureState();
         encouragementSpoken = false;
-        enterFocusSurface();
+        blackoutBtn.classList.remove('hidden');
+        calibBtn.disabled = true;
+        setStatus('校准完成，开始学习。需要黑屏时请点击黑屏学习。', 'ok');
         speakText('校准完成，开始学习。');
         sessionTimer = setInterval(function () {
             if (!activeSession || activeSession.state !== 'focus') return;
@@ -464,21 +467,25 @@
         beginCalibration();
     });
 
+    blackoutBtn.addEventListener('click', function () {
+        if (!activeSession || activeSession.state !== 'focus') return;
+        enterFocusSurface();
+        speakText('已进入黑屏学习模式。');
+    });
     endBtn.addEventListener('click', function () { completeSession('manual'); });
     backHomeBtn.addEventListener('click', function () {
         activeSession = null;
         baseline = null;
         focusStartedAt = null;
         calibBtn.disabled = false;
+        blackoutBtn.classList.add('hidden');
+        leaveFocusSurface();
         setView('home');
     });
 
     document.addEventListener('visibilitychange', function () {
-        if (document.hidden && activeSession && activeSession.state === 'focus') {
-            try { activeSession = SessionModel.transitionSession(activeSession, 'APP_BACKGROUND', Date.now()); } catch (e) { }
-            stopCamera();
-            speakText('学习已中断，回来后需要重新摆放和校准。');
-            renderResult('interrupted');
+        if (activeSession && activeSession.state === 'focus') {
+            debugLog('[sit-down] visibility changed during focus', { hidden: document.hidden });
         }
     });
 
