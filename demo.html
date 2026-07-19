@@ -40,6 +40,10 @@
                 <button id="settingsToggle" type="button" class="secondary-action">设置</button>
                 <button id="endBtn" type="button" class="secondary-action">结束</button>
             </div>
+            <div id="recoveryControls" class="study-controls hidden">
+                <button id="retryStartupBtn" type="button">重试</button>
+                <button id="returnHomeBtn" type="button" class="secondary-action">返回开始页</button>
+            </div>
             <form id="sessionForm" class="settings-panel hidden">
                 <label class="field-label" for="activitySelect">本轮做什么</label>
                 <select id="activitySelect">
@@ -73,6 +77,7 @@
 
     <script src="./src/js/posture-math.js?v=20260715-preload-assets"></script>
     <script src="./src/js/session-model.js?v=20260715-preload-assets"></script>
+    <script src="./src/js/startup-controller.js?v=20260719-startup-recovery"></script>
     <script src="./src/js/demo-app.js?v=20260715-preload-assets"></script>
 </body>
 

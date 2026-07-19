@@ -14,17 +14,23 @@
     var durationOptions = Array.from(document.querySelectorAll('.duration-option'));
     var calibBtn = document.getElementById('calibBtn');
     var endBtn = document.getElementById('endBtn');
+    var studyControls = document.getElementById('studyControls');
+    var recoveryControls = document.getElementById('recoveryControls');
+    var retryStartupBtn = document.getElementById('retryStartupBtn');
+    var returnHomeBtn = document.getElementById('returnHomeBtn');
     var backHomeBtn = document.getElementById('backHomeBtn');
     var resultSummary = document.getElementById('resultSummary');
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
+    var StartupController = window.StartupController;
     var APP_VERSION = '20260715-preload-assets';
     var debugLog = window.__sitDownDebugLog || function () { };
     debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__, appVersion: APP_VERSION });
 
     var pose = null;
     var camera = null;
+    var startup = null;
     var activeSession = null;
     var activeStrategy = null;
     var baseline = null;
@@ -100,6 +106,9 @@
             video.srcObject.getTracks().forEach(function (track) { track.stop(); });
             video.srcObject = null;
         }
+        camera = null;
+        if (pose && typeof pose.close === 'function') pose.close();
+        pose = null;
     }
 
     function resetPostureState() {
@@ -160,7 +169,8 @@
     }
 
     function completeSession(reason) {
-        stopCamera();
+        if (startup) startup.stop();
+        else stopCamera();
         if (activeSession && activeSession.state !== 'completed') {
             try { activeSession = SessionModel.transitionSession(activeSession, 'END', Date.now()); } catch (e) { }
         }
@@ -384,6 +394,7 @@
     }
 
     function setupPose() {
+        if (typeof Pose === 'undefined') throw { code: 'unsupported' };
         setStatus('正在加载本地姿态模型，首次加载本地姿态模型可能需要一点时间...', 'info');
         debugLog('[sit-down] setupPose begin', { hasPoseCtor: typeof Pose !== 'undefined' });
         pose = new Pose({ locateFile: function (file) {
@@ -397,6 +408,7 @@
     }
 
     function startCamera() {
+        if (typeof Camera === 'undefined') throw { code: 'unsupported' };
         debugLog('[sit-down] startCamera begin', {
             hasCameraCtor: typeof Camera !== 'undefined',
             protocol: window.location.protocol,
@@ -406,7 +418,14 @@
         canvas.height = 480;
         fitCanvas();
         camera = new Camera(video, {
-            onFrame: function () { return pose.send({ image: video }); },
+            onFrame: function () {
+                return pose.send({ image: video }).catch(function (error) {
+                    error.stage = 'model';
+                    if (startup) startup.stop();
+                    showStartupFailure(error);
+                    throw error;
+                });
+            },
             width: 640,
             height: 480
         });
@@ -417,6 +436,40 @@
                 readyState: video.readyState
             });
         });
+    }
+
+    function startRuntime() {
+        if (!window.isSecureContext) return Promise.reject({ code: 'insecure-or-policy' });
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') return Promise.reject({ code: 'unsupported' });
+        try {
+            setupPose();
+        } catch (error) {
+            error.stage = 'model';
+            return Promise.reject(error);
+        }
+        return startCamera();
+    }
+
+    function showStartupFailure(error) {
+        var classified = StartupController.classifyStartupError(error);
+        debugLog('[sit-down] startup failed', { code: classified.code });
+        activeSession = null;
+        studyControls.classList.add('hidden');
+        recoveryControls.classList.remove('hidden');
+        sessionForm.classList.add('hidden');
+        setView('study');
+        setStatus(classified.message, 'warn');
+    }
+
+    function leaveToHome() {
+        if (startup) startup.stop();
+        activeSession = null;
+        baseline = null;
+        focusStartedAt = null;
+        calibBtn.disabled = false;
+        recoveryControls.classList.add('hidden');
+        studyControls.classList.remove('hidden');
+        setView('home');
     }
 
     durationOptions.forEach(function (button) {
@@ -443,21 +496,22 @@
         activeSession = SessionModel.transitionSession(activeSession, 'START_PLACEMENT', Date.now());
         calibBtn.disabled = false;
         sessionForm.classList.add('hidden');
+        recoveryControls.classList.add('hidden');
+        studyControls.classList.remove('hidden');
         setView('study');
         setStatus('正在准备摄像头和本地姿态模型。首次加载本地姿态模型可能需要一点时间...', 'info');
-        startCamera().then(function () {
-            debugLog('[sit-down] startCamera resolved in trial handler');
+        startup.start().then(function () {
+            debugLog('[sit-down] startup resolved in trial handler');
             setStatus('请确认头部和双肩都在画面里，然后点击开始校准。', 'info');
         }).catch(function (err) {
-            debugLog('[sit-down] startCamera failed', err);
-            activeSession = null;
-            setView('home');
-            alert('摄像头打开失败，请允许摄像头权限后重试。');
-            console.error(err);
+            if (err && err.code === 'cancelled') return;
+            showStartupFailure(err);
         });
     }
 
     startTrialBtn.addEventListener('click', startTrialSession);
+    retryStartupBtn.addEventListener('click', startTrialSession);
+    returnHomeBtn.addEventListener('click', leaveToHome);
     settingsToggle.addEventListener('click', function () {
         var willShow = sessionForm.classList.contains('hidden');
         if (willShow && activeSession && activeSession.state === 'focus') {
@@ -495,11 +549,7 @@
     });
     endBtn.addEventListener('click', function () { completeSession('manual'); });
     backHomeBtn.addEventListener('click', function () {
-        activeSession = null;
-        baseline = null;
-        focusStartedAt = null;
-        calibBtn.disabled = false;
-        setView('home');
+        leaveToHome();
     });
 
     document.addEventListener('visibilitychange', function () {
@@ -515,12 +565,7 @@
             hasCameraCtor: typeof Camera !== 'undefined',
             hasDraw: typeof drawConnectors !== 'undefined'
         });
-        try {
-            setupPose();
-            if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('离线缓存注册失败', err); });
-        } catch (err) {
-            console.error(err);
-            alert('模型加载失败，请刷新页面或更换浏览器。');
-        }
+        startup = StartupController.createStartupController({ start: startRuntime, cleanup: stopCamera });
+        if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('离线缓存注册失败', err); });
     });
 })();
