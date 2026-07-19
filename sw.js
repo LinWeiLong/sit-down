@@ -8,7 +8,7 @@ const APP_SHELL = [
   './vendor/vconsole/vconsole.min.js',
   './src/js/posture-math.js',
   './src/js/session-model.js',
-  './src/js/startup-controller.js',
+  './src/js/camera-startup.js',
   './src/js/demo-app.js',
   './vendor/mediapipe/pose/pose.js',
   './vendor/mediapipe/camera_utils/camera_utils.js',

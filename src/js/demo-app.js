@@ -23,7 +23,7 @@
 
     var PoseMath = window.PostureMath;
     var SessionModel = window.StudySessionModel;
-    var StartupController = window.StartupController;
+    var CameraStartup = window.CameraStartup;
     var APP_VERSION = '20260715-preload-assets';
     var debugLog = window.__sitDownDebugLog || function () { };
     debugLog('[sit-down] app script loaded', { href: window.location.href, debug: !!window.__SIT_DOWN_DEBUG__, appVersion: APP_VERSION });
@@ -169,7 +169,7 @@
     }
 
     function completeSession(reason) {
-        if (startup) startup.stop();
+        if (startup) startup.dispose();
         else stopCamera();
         if (activeSession && activeSession.state !== 'completed') {
             try { activeSession = SessionModel.transitionSession(activeSession, 'END', Date.now()); } catch (e) { }
@@ -421,7 +421,7 @@
             onFrame: function () {
                 return pose.send({ image: video }).catch(function (error) {
                     error.stage = 'model';
-                    if (startup) startup.stop();
+                    if (startup) startup.dispose();
                     showStartupFailure(error);
                     throw error;
                 });
@@ -451,7 +451,7 @@
     }
 
     function showStartupFailure(error) {
-        var classified = StartupController.classifyStartupError(error);
+        var classified = CameraStartup.classifyStartupError(error);
         debugLog('[sit-down] startup failed', { code: classified.code });
         activeSession = null;
         studyControls.classList.add('hidden');
@@ -462,7 +462,7 @@
     }
 
     function leaveToHome() {
-        if (startup) startup.stop();
+        if (startup) startup.dispose();
         activeSession = null;
         baseline = null;
         focusStartedAt = null;
@@ -484,7 +484,7 @@
         return { activity: activitySelect.value || 'writing', plannedMinutes: Number(durationInput.value || 15) };
     }
 
-    function startTrialSession() {
+    function startTrialSession(isRetry) {
         var config = getCurrentSessionConfig();
         var validated = SessionModel.validateSessionConfig(config);
         if (!validated.ok) {
@@ -500,7 +500,7 @@
         studyControls.classList.remove('hidden');
         setView('study');
         setStatus('正在准备摄像头和本地姿态模型。首次加载本地姿态模型可能需要一点时间...', 'info');
-        startup.start().then(function () {
+        startup[isRetry ? 'retry' : 'start']().then(function () {
             debugLog('[sit-down] startup resolved in trial handler');
             setStatus('请确认头部和双肩都在画面里，然后点击开始校准。', 'info');
         }).catch(function (err) {
@@ -510,7 +510,7 @@
     }
 
     startTrialBtn.addEventListener('click', startTrialSession);
-    retryStartupBtn.addEventListener('click', startTrialSession);
+    retryStartupBtn.addEventListener('click', function () { startTrialSession(true); });
     returnHomeBtn.addEventListener('click', leaveToHome);
     settingsToggle.addEventListener('click', function () {
         var willShow = sessionForm.classList.contains('hidden');
@@ -565,7 +565,7 @@
             hasCameraCtor: typeof Camera !== 'undefined',
             hasDraw: typeof drawConnectors !== 'undefined'
         });
-        startup = StartupController.createStartupController({ start: startRuntime, cleanup: stopCamera });
+        startup = CameraStartup.createCameraStartup({ start: startRuntime, cleanup: stopCamera });
         if ('serviceWorker' in navigator) navigator.serviceWorker.register('./sw.js').catch(function (err) { console.warn('离线缓存注册失败', err); });
     });
 })();

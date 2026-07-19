@@ -1,7 +1,7 @@
 (function (root, factory) {
     var api = factory();
     if (typeof module === 'object' && module.exports) module.exports = api;
-    root.StartupController = api;
+    root.CameraStartup = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     var MESSAGES = {
         unsupported: '这个浏览器暂不支持摄像头识别。请换用较新的浏览器或设备。',
@@ -30,13 +30,13 @@
         return { code: result, message: MESSAGES[result] };
     }
 
-    function createStartupController(options) {
+    function createCameraStartup(options) {
         var start = options && options.start;
         var cleanup = options && options.cleanup || function () { };
         var activePromise = null;
         var queuedPromise = null;
         var generation = 0;
-        var cancelled = false;
+        var disposed = false;
 
         function safelyCleanup() {
             try { cleanup(); } catch (error) { }
@@ -44,12 +44,12 @@
 
         function launch() {
             safelyCleanup();
-            cancelled = false;
+            disposed = false;
             var attempt = ++generation;
             var promise = Promise.resolve().then(function () {
                 return start();
             }).then(function (result) {
-                if (cancelled || attempt !== generation) {
+                if (disposed || attempt !== generation) {
                     safelyCleanup();
                     throw { code: 'cancelled' };
                 }
@@ -71,7 +71,7 @@
         function begin() {
             if (queuedPromise) return queuedPromise;
             if (!activePromise) return launch();
-            if (!cancelled) return activePromise;
+            if (!disposed) return activePromise;
             queuedPromise = activePromise.catch(function () { }).then(function () {
                 queuedPromise = null;
                 return launch();
@@ -79,14 +79,14 @@
             return queuedPromise;
         }
 
-        function stop() {
-            cancelled = true;
+        function dispose() {
+            disposed = true;
             generation += 1;
             safelyCleanup();
         }
 
-        return { start: begin, stop: stop, isStarting: function () { return !!activePromise; } };
+        return { start: begin, retry: begin, dispose: dispose, isStarting: function () { return !!activePromise; } };
     }
 
-    return { classifyStartupError: classifyStartupError, createStartupController: createStartupController };
+    return { classifyStartupError: classifyStartupError, createCameraStartup: createCameraStartup };
 });

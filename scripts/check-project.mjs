@@ -7,7 +7,7 @@ const requiredFiles = [
   'src/styles/app.css',
   'src/js/posture-math.js',
   'src/js/session-model.js',
-  'src/js/startup-controller.js',
+  'src/js/camera-startup.js',
   'src/js/demo-app.js',
   'src/js/debug-bootstrap.js',
   'vendor/vconsole/vconsole.min.js',
@@ -48,7 +48,7 @@ for (const path of ['pose_landmark_full.tflite', 'pose_solution_packed_assets.da
   }
 }
 if (!html.includes('src/styles/app.css')) throw new Error('index.html is missing shared stylesheet.');
-for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/startup-controller.js', 'src/js/demo-app.js']) {
+for (const path of ['src/styles/app.css', 'src/js/debug-bootstrap.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/camera-startup.js', 'src/js/demo-app.js']) {
   if (!demoHtml.includes(path)) throw new Error('demo.html is missing runtime asset: ' + path);
 }
 
@@ -56,7 +56,7 @@ const sw = await readFile('sw.js', 'utf8');
 if (!sw.includes("pathname.includes('/vendor/mediapipe/')")) {
   throw new Error('Service worker must bypass MediaPipe runtime assets to avoid mobile wasm/model initialization stalls.');
 }
-for (const path of ['demo.html', 'src/styles/app.css', 'src/js/debug-bootstrap.js', 'vendor/vconsole/vconsole.min.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/startup-controller.js', 'src/js/demo-app.js']) {
+for (const path of ['demo.html', 'src/styles/app.css', 'src/js/debug-bootstrap.js', 'vendor/vconsole/vconsole.min.js', 'src/js/posture-math.js', 'src/js/session-model.js', 'src/js/camera-startup.js', 'src/js/demo-app.js']) {
   if (!sw.includes(path)) throw new Error('Service worker app shell is missing: ' + path);
 }
 
@@ -111,10 +111,10 @@ if (!app.includes('var ALERT_DELAY_MS = 2000') || !app.includes('var ALERT_COOLD
 if (!app.includes('首次加载本地姿态模型可能需要一点时间') || !app.includes('modelComplexity: 1')) {
   throw new Error('Demo must explain first-load model cost and keep modelComplexity at 1.');
 }
-if (!app.includes('createStartupController') || !app.includes('showStartupFailure') || !app.includes('retryStartupBtn') || !app.includes('returnHomeBtn')) {
+if (!app.includes('createCameraStartup') || !app.includes('showStartupFailure') || !app.includes('retryStartupBtn') || !app.includes('returnHomeBtn')) {
   throw new Error('Demo must provide guarded startup, retry, and return-home recovery controls.');
 }
-const startupController = await readFile('src/js/startup-controller.js', 'utf8');
+const startupController = await readFile('src/js/camera-startup.js', 'utf8');
 for (const code of ['unsupported', 'insecure-or-policy', 'permission-denied', 'no-camera', 'camera-busy', 'model-failed', 'unknown']) {
   if (!startupController.includes(code)) throw new Error('Startup controller is missing error category: ' + code);
 }

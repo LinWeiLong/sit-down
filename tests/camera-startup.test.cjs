@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 
-const { classifyStartupError, createStartupController } = require('../src/js/startup-controller.js');
+const { classifyStartupError, createCameraStartup } = require('../src/js/camera-startup.js');
 
 test('classifies browser, permission, device, and model startup failures without exposing device data', () => {
     assert.equal(classifyStartupError({ code: 'unsupported' }).code, 'unsupported');
@@ -13,10 +13,10 @@ test('classifies browser, permission, device, and model startup failures without
     assert.equal(classifyStartupError({ name: 'UnknownError' }).code, 'unknown');
 });
 
-test('serializes concurrent starts and cleans prior resources before every retry or failure', async () => {
+test('reuses one start attempt and cleans resources before retry, failure, and dispose', async () => {
     const events = [];
     let attempt = 0;
-    const controller = createStartupController({
+    const startup = createCameraStartup({
         cleanup: () => events.push('cleanup'),
         start: async () => {
             attempt += 1;
@@ -26,21 +26,21 @@ test('serializes concurrent starts and cleans prior resources before every retry
         }
     });
 
-    const first = controller.start();
-    assert.equal(first, controller.start());
+    const first = startup.start();
+    assert.equal(first, startup.start());
     await assert.rejects(first, /busy/);
     assert.deepEqual(events, ['cleanup', 'start-1', 'cleanup']);
 
-    assert.equal(await controller.start(), 'ready');
+    assert.equal(await startup.retry(), 'ready');
     assert.deepEqual(events, ['cleanup', 'start-1', 'cleanup', 'cleanup', 'start-2']);
-    controller.stop();
+    startup.dispose();
     assert.deepEqual(events, ['cleanup', 'start-1', 'cleanup', 'cleanup', 'start-2', 'cleanup']);
 });
 
-test('waits for a stopped attempt to settle before starting its retry', async () => {
+test('waits for a disposed attempt to settle before retrying', async () => {
     const resolvers = [];
     let starts = 0;
-    const controller = createStartupController({
+    const startup = createCameraStartup({
         cleanup: () => {},
         start: () => new Promise(resolve => {
             starts += 1;
@@ -48,19 +48,19 @@ test('waits for a stopped attempt to settle before starting its retry', async ()
         })
     });
 
-    const first = controller.start();
+    const first = startup.start();
     await Promise.resolve();
-    controller.stop();
-    const retry = controller.start();
+    startup.dispose();
+    const retry = startup.retry();
     assert.equal(starts, 1);
 
     resolvers[0]('old');
     await assert.rejects(first, error => error.code === 'cancelled');
     await Promise.resolve();
     assert.equal(starts, 2);
-    assert.equal(controller.isStarting(), true);
+    assert.equal(startup.isStarting(), true);
 
-    controller.start();
+    startup.start();
     assert.equal(starts, 2);
     resolvers[1]('new');
     assert.equal(await retry, 'new');
